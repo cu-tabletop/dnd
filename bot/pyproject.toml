@@ -8,6 +8,7 @@ dependencies = [
     "pydantic-settings (>=2.11.0,<3.0.0)",
     "aiogram-dialog==2.4.0",
     "redis (>=6.4.0,<7.0.0)",
+    "httpx==0.28.1",
 ]
 
 [project.optional-dependencies]

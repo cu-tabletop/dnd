@@ -17,4 +17,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health/ || exit 1
 
-CMD ["poetry", "run", "gunicorn", "--workers=4", "--bind=0.0.0.0:8000", "--access-logfile", "-", "--error-logfile", "-", "my_app.wsgi:application"]
+#CMD ["poetry", "run", "gunicorn", "--workers=4", "--bind=0.0.0.0:8000", "--access-logfile", "-", "--error-logfile", "-", "my_app.wsgi:application"]
+
+COPY docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
