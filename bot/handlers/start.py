@@ -1,17 +1,15 @@
 from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
+from aiogram_dialog import DialogManager
 
-from filters.admin import AdminFilter
+from states.mainmenu import MainMenu
 
 router = Router()
 
 
-@router.message(CommandStart(), ~AdminFilter())
-async def start_command(message: Message) -> None:
-    await message.answer(text="Этот бот пока что ничего не делает")
-
-
-@router.message(CommandStart(), AdminFilter())
-async def start_command(message: Message) -> None:
-    await message.answer(text="Привет, админ!")
+@router.message(CommandStart())
+async def start_command(
+    message: Message, dialog_manager: DialogManager
+) -> None:
+    await dialog_manager.start(MainMenu.main)
