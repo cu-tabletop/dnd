@@ -1,0 +1,34 @@
+﻿name: Django Tests
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "backend/**.py"
+      - "backend/**/tests/**"
+      - "backend/**docker**"
+      - "backend/**Docker**"
+      - ".github/workflows/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.12]
+
+    steps:
+    - uses: actions/checkout@v4.2.2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install Dependencies
+      run: |  
+        cd backend
+        python -m pip install --upgrade pip  
+        pip install -r requirements.txt
+    - name: Run Tests
+      run: |  
+        python manage.py test
