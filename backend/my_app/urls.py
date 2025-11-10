@@ -19,8 +19,10 @@ from django.contrib import admin
 from django.urls import path
 
 from .api import api
+from .views import health_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", api.urls),
+    path("health/", health_view),
 ]
