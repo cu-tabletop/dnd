@@ -1,18 +1,21 @@
+import json
+import logging
+
 from aiogram import Router
 from aiogram.enums import ContentType
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import Dialog, Window, DialogManager
-from aiogram_dialog.api.entities import MediaAttachment
+from aiogram_dialog.api.entities import MediaAttachment, MediaId
 from aiogram_dialog.widgets.input import TextInput, MessageInput
 from aiogram_dialog.widgets.kbd import Button, Back, Cancel, Row
 from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Const, Format
 
-from settings import settings
 from states.create_campaign import CreateCampaignStates
 from states.mainmenu import MainMenuStates
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 
 async def on_name_entered(
@@ -39,7 +42,9 @@ async def on_icon_entered(
     message: Message, widget: MessageInput, dialog_manager: DialogManager
 ):
     if message.photo:
-        dialog_manager.dialog_data["icon"] = message.photo[-1]
+        dialog_manager.dialog_data["icon"] = message.photo[
+            -1
+        ].model_dump_json()
 
     else:
         # TODO:
@@ -95,8 +100,12 @@ async def on_cancel(
 
 
 async def get_confirm_data(dialog_manager: DialogManager, **kwargs):
+    logger.debug(dialog_manager.dialog_data)
+
+    icon_data = json.loads(dialog_manager.dialog_data["icon"])
     icon = MediaAttachment(
-        type=ContentType.PHOTO, path=settings.PATH_TO_DEFAULT_ICON
+        type=ContentType.PHOTO,
+        file_id=MediaId(icon_data["file_id"]),
     )
 
     return {

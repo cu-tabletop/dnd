@@ -85,15 +85,14 @@ async def run_bot() -> None:
 
 
 async def main() -> None:
-    logging.basicConfig(
-        level=settings.LOG_LEVEL,
-        format="%(filename)s:%(lineno)d #%(levelname)-8s [%(asctime)s] - %(name)s - %(message)s",
-    )
     logger.info("Запущен бот в проекте: %s", settings.PROJECT_NAME)
 
     await run_bot()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        level=settings.LOG_LEVEL,
+        format="%(levelname)s:%(name)s:%(message)s",
+    )
     asyncio.run(main())
