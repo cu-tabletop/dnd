@@ -1,16 +1,6 @@
 from aiogram import Router
-from aiogram_dialog import Dialog, Window, DialogManager
-from aiogram_dialog.widgets.kbd import (
-    Button,
-    Group,
-    Row,
-    ScrollingGroup,
-    Back,
-    Cancel,
-    Start,
-    SwitchTo,
-    Next,
-)
+from aiogram_dialog import Dialog, StartMode, Window, DialogManager, SubManager
+from aiogram_dialog.widgets.kbd import Button, Group, Row, Back, Cancel, Next, ListGroup
 from aiogram_dialog.widgets.text import Const, Format, Multi
 from aiogram_dialog.widgets.input import TextInput
 from aiogram.types import CallbackQuery, Message
@@ -54,22 +44,28 @@ async def get_campaigns_data(dialog_manager: DialogManager, **kwargs):
     }
 
 
+async def get_create_campaign_data(dialog_manager: DialogManager, **kwargs):
+    return {
+        "title": dialog_manager.dialog_data.get("title", "Не задано"),
+        "description": dialog_manager.dialog_data.get("description", "Не задано"),
+        "icon": dialog_manager.dialog_data.get("icon", "🏰"),  # Значок по умолчанию
+    }
+
+
 # === Кнопки ===
 async def on_campaign_selected(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager, item_id: str
+    callback: CallbackQuery, button: Button, dialog_manager: SubManager
 ):
     # Сохраняем выбранную кампанию
-    dialog_manager.dialog_data["selected_campaign_id"] = item_id
+    dialog_manager.dialog_data["selected_campaign_id"] = dialog_manager.item_id
 
     # Находим кампанию в данных
-    campaigns_data = await get_campaigns_data(
-        callback.message, dialog_manager  # type: ignore
-    )
+    campaigns_data = await get_campaigns_data(dialog_manager)
     selected_campaign = next(
         (
             camp
             for camp in campaigns_data["campaigns"]
-            if str(camp.get("id")) == item_id
+            if str(camp.get("id")) == dialog_manager.item_id
         ),
         None,
     )
@@ -77,7 +73,7 @@ async def on_campaign_selected(
     if selected_campaign:
         dialog_manager.dialog_data["selected_campaign"] = selected_campaign
 
-    await dialog_manager.switch_to(campaign_states.CampaignManage.main)
+    await dialog_manager.start(campaign_states.CampaignManage.main)
 
 
 async def on_page_change(
@@ -87,7 +83,9 @@ async def on_page_change(
     direction: int,
 ):
     current_page = dialog_manager.dialog_data.get("page", 0)
-    campaigns_data = await get_campaigns_data(callback.message, dialog_manager)  # type: ignore
+    campaigns_data = await get_campaigns_data(
+        callback.message, dialog_manager  # type: ignore
+    )
     total_pages = campaigns_data["total_pages"]
 
     new_page = current_page + direction
@@ -105,6 +103,82 @@ async def get_campaign_manage_data(dialog_manager: DialogManager, **kwargs):
     }
 
 
+async def on_campaign_title_entered(
+    message: Message, widget: TextInput, dialog_manager: DialogManager, text: str
+):
+    if len(text) > 255:
+        await message.answer("Название слишком длинное (максимум 255 символов)")
+        return
+    dialog_manager.dialog_data["title"] = text
+    await dialog_manager.next()
+
+
+async def on_campaign_description_entered(
+    message: Message, widget: TextInput, dialog_manager: DialogManager, text: str
+):
+    if len(text) > 1023:
+        await message.answer("Описание слишком длинное (максимум 1023 символа)")
+        return
+    dialog_manager.dialog_data["description"] = text
+    await dialog_manager.next()
+
+
+async def on_icon_selected(
+    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+):
+    icon = {
+        "castle": "🏰",
+        "books": "📚",
+        "lightning": "⚡",
+        "fire": "🔥",
+        "moon": "🌙",
+        "star": "⭐",
+    }[button.widget_id or "castle"]
+    dialog_manager.dialog_data["icon"] = icon
+    await dialog_manager.next()
+
+
+async def on_create_cancel(
+    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+):
+    await dialog_manager.done()
+    # Возвращаемся к списку кампаний
+    await dialog_manager.start(
+        campaign_states.CampaignManagerMain.main,
+        mode=StartMode.RESET_STACK,
+        data=dialog_manager.start_data,
+    )
+
+
+async def on_campaign_confirm(
+    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+):
+    # Получаем данные из dialog_data
+    title = dialog_manager.dialog_data.get("title")
+    description = dialog_manager.dialog_data.get("description")
+    icon = dialog_manager.dialog_data.get("icon", "🏰")
+
+    # Получаем telegram_id пользователя
+    user_id = callback.from_user.id
+
+    if not title:
+        await callback.answer("Ошибка: не указано название")  # type: ignore
+        return
+
+    # Создаем кампанию через API
+    result = await api_client.create_campaign(
+        telegram_id=user_id, title=title, description=description, icon=icon
+    )
+
+    if "error" in result:
+        await callback.answer(
+            f"Ошибка при создании: {result['error']}", show_alert=True
+        )
+    else:
+        await callback.answer("🎉 Учебная группа успешно создана!", show_alert=True)
+        await dialog_manager.done()
+
+
 # === Окна ===
 
 # Главное окно списка кампаний
@@ -114,17 +188,17 @@ campaign_list_window = Window(
         Format("Страница {current_page}/{total_pages}\n"),
     ),
     # Список кампаний
-    Group(
+    ListGroup(
         *[
             Button(
-                Format("📚 {item.title}"),
-                id=f"campaign_{i}",
-                on_click=on_campaign_selected,  # type: ignore
+                Format("{item[icon]} {item[title]}"),
+                id="campaign",
+                on_click=on_campaign_selected,
             )
-            for i in range(10)  # Максимум 10 кнопок
-        ],
+        ][:10],
         id="campaigns_group",
-        width=2,
+        item_id_getter=lambda item: item["id"],
+        items="campaigns",
         when="has_campaigns",
     ),
     Const(
@@ -179,9 +253,79 @@ campaign_manage_window = Window(
     state=campaign_states.CampaignManage.main,
     getter=get_campaign_manage_data,
 )
+# Окно ввода названия
+title_window = Window(
+    Const(
+        "🏰 Создание новой учебной группы\n\n"
+        "Введите название для вашей учебной группы:\n"
+        "(максимум 255 символов)"
+    ),
+    TextInput(
+        id="campaign_title_input", on_success=on_campaign_title_entered  # type: ignore
+    ),
+    Cancel(Const("❌ Отмена")),
+    state=campaign_states.CreateCampaign.select_title,
+)
+# Окно ввода описания
+description_window = Window(
+    Multi(
+        Const("📝 Теперь введите описание для вашей группы:\n"),
+        Format("Название: {title}\n"),
+        Const("(максимум 1023 символа, можно пропустить)"),
+    ),
+    TextInput(
+        id="campaign_description_input",
+        on_success=on_campaign_description_entered,  # type: ignore
+    ),
+    Button(Const("⏭ Пропустить"), id="skip_description", on_click=Next()),
+    Back(Const("⬅️ Назад")),
+    state=campaign_states.CreateCampaign.select_description,
+    getter=get_create_campaign_data,
+)
+# Окно выбора иконки
+icon_window = Window(
+    Multi(
+        Const("🎨 Выберите иконку для вашей группы:\n"),
+        Format("Название: {title}\n"),
+        Format("Описание: {description}"),
+    ),
+    Group(
+        Button(Const("🏰 Замок"), id="castle", on_click=on_icon_selected),
+        Button(Const("📚 Книги"), id="books", on_click=on_icon_selected),
+        Button(Const("⚡ Молния"), id="lightning", on_click=on_icon_selected),
+        Button(Const("🔥 Огонь"), id="fire", on_click=on_icon_selected),
+        Button(Const("🌙 Луна"), id="moon", on_click=on_icon_selected),
+        Button(Const("⭐ Звезда"), id="star", on_click=on_icon_selected),
+        width=2,
+    ),
+    Button(Const("⏭ Пропустить"), id="skip_icon", on_click=Next()),
+    Back(Const("⬅️ Назад")),
+    state=campaign_states.CreateCampaign.select_icon,
+    getter=get_create_campaign_data,
+)
+# Окно подтверждения
+confirm_window = Window(
+    Multi(
+        Const("✅ Проверьте данные новой учебной группы:\n\n"),
+        Format("🎨 Иконка: {icon}"),
+        Format("📝 Название: {title}"),
+        Format("📄 Описание: {description}\n"),
+        Const("Всё верно?"),
+    ),
+    Button(
+        Const("✅ Создать группу"), id="confirm_create", on_click=on_campaign_confirm
+    ),
+    Back(Const("⬅️ Назад")),
+    Button(Const("❌ Отмена"), id="cancel_create", on_click=on_create_cancel),
+    state=campaign_states.CreateCampaign.confirm,
+    getter=get_create_campaign_data,
+)
 
 campaign_manager_dialogs = Dialog(campaign_list_window), Dialog(campaign_manage_window)
+create_campaign_dialog = Dialog(
+    title_window, description_window, icon_window, confirm_window
+)
 
 router = Router()
 
-router.include_routers(*campaign_manager_dialogs)
+router.include_routers(*campaign_manager_dialogs, create_campaign_dialog)
