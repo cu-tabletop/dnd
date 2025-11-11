@@ -85,11 +85,20 @@ class CharacterData(BaseModel):
         )
 
     def preview_stats(self) -> str:
+        return self._repr_default_skills() + "\n\n" + self._repr_prof_skills()
+
+    def _repr_default_skills(self) -> str:
         return "\n".join(
             [
                 f"<b>{STATS_CONVERSION[key]}:</b> {value.score}({value.modifier})"
                 for key, value in self.stats.items()
             ]
+        )
+
+    def _repr_prof_skills(self) -> str:
+        return "\n".join(
+            f"<b>{representation}:</b> {'✅' if skill in self.prof_skills else '❌'}"
+            for skill, representation in SKILLS_CONVERSION.items()
         )
 
 
@@ -100,6 +109,27 @@ STATS_CONVERSION = {
     "int": "Интеллект",
     "wis": "Мудрость",
     "cha": "Харизма",
+}
+
+SKILLS_CONVERSION = {
+    "acrobatics": "Акробатика",
+    "animal handling": "Уход за животными",
+    "arcana": "Магия",
+    "athletics": "Атлетика",
+    "deception": "Обман",
+    "history": "История",
+    "insight": "Проницательность",
+    "intimidation": "Запугивание",
+    "investigation": "Расследование",
+    "medicine": "Медицина",
+    "nature": "Природа",
+    "perception": "Восприятие",
+    "performance": "Выступление",
+    "persuasion": "Убеждение",
+    "religion": "Религия",
+    "sleight of hand": "Ловкость рук",
+    "stealth": "Скрытность",
+    "survival": "Выживание",
 }
 
 

@@ -116,9 +116,7 @@ router.include_router(
                 Button(
                     Const("Инвентарь"),
                     id="inventory",
-                    on_click=lambda c, b, m: m.switch_to(
-                        CampaignDialog.inventory
-                    ),
+                    on_click=lambda c, b, m: c.answer("TODO"),
                 ),
             ),
             Cancel(Const("Назад")),
