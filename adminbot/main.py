@@ -68,7 +68,7 @@ async def run_bot() -> None:
 
     bot = Bot(
         token=settings.TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher(storage=storage)
 

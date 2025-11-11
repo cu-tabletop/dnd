@@ -1,12 +1,11 @@
 import logging
-from typing import Optional, List
-
 from aiogram import Router
 from aiogram.types import User, CallbackQuery
 from aiogram_dialog import Dialog, Window, DialogManager
 from aiogram_dialog.widgets.kbd import Button, Column, Select
 from aiogram_dialog.widgets.text import Const, Format
 from httpx import AsyncClient, HTTPStatusError
+from typing import Optional, List
 
 from settings import settings
 from states.mainmenu import MainMenu
@@ -22,6 +21,8 @@ async def get_user_campaigns(telegram_id: int) -> Optional[List[dict]]:
             response.raise_for_status()
 
             data = response.json()
+
+            logger.debug("Backend returned the following campaigns data: %s", data)
 
             if isinstance(data, list):
                 return data

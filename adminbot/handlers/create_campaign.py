@@ -1,6 +1,7 @@
 import base64
 import io
 import logging
+from typing import Any
 
 from PIL import Image
 from aiofiles import tempfile
@@ -9,14 +10,14 @@ from aiogram.enums import ContentType
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import Dialog, Window, DialogManager
 from aiogram_dialog.api.entities import MediaAttachment, MediaId
-from aiogram_dialog.widgets.input import TextInput, MessageInput
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Back, Cancel, Row
 from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Const, Format
 from httpx import AsyncClient
 
 from settings import settings
-from states.create_campaign import CreateCampaignStates
+from states.create_campaign import CampaignCreate
 from states.mainmenu import MainMenuStates
 
 router = Router()
@@ -25,21 +26,19 @@ logger = logging.getLogger(__name__)
 
 async def on_name_entered(
     message: Message,
-    widget: TextInput,
+    widget: MessageInput,
     dialog_manager: DialogManager,
-    text: str,
 ):
-    dialog_manager.dialog_data["name"] = text
+    dialog_manager.dialog_data["name"] = message.text
     await dialog_manager.next()
 
 
 async def on_description_entered(
     message: Message,
-    widget: TextInput,
+    widget: MessageInput,
     dialog_manager: DialogManager,
-    text: str,
 ):
-    dialog_manager.dialog_data["description"] = text
+    dialog_manager.dialog_data["description"] = message.text
     await dialog_manager.next()
 
 
@@ -47,21 +46,27 @@ async def on_icon_entered(
     message: Message, widget: MessageInput, dialog_manager: DialogManager
 ):
     dialog_manager.dialog_data["icon"] = message.photo[-1].file_id
-
     await dialog_manager.next()
 
 
-async def on_skip_description(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+async def on_privacy_entered(
+    callback: CallbackQuery,
+    button: Button,
+    dialog_manager: DialogManager,
+    privacy: bool,
 ):
-    dialog_manager.dialog_data["description"] = ""
+    dialog_manager.dialog_data["privacy"] = privacy
     await dialog_manager.next()
 
 
-async def on_skip_icon(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+async def on_skip(
+    callback: CallbackQuery,
+    button: Button,
+    dialog_manager: DialogManager,
+    key: str,
+    value: Any,
 ):
-    dialog_manager.dialog_data["icon"] = None
+    dialog_manager.dialog_data[key] = value
     await dialog_manager.next()
 
 
@@ -91,13 +96,13 @@ async def on_confirm(
                     callback.bot, dialog_manager.dialog_data.get("icon", "")
                 ),
                 "description": dialog_manager.dialog_data.get(
-                    "description", "не указано"
+                    "description", ""
                 ),
             },
         )
 
         logger.debug(
-            f"Sent request to create campaign for use {callback.from_user.id} and got status code {response.status_code}"
+            f"Sent request to create campaign for user {callback.from_user.id} and got status code {response.status_code}"
         )
         if response.status_code != 201:
             logger.error(
@@ -142,45 +147,66 @@ async def get_confirm_data(dialog_manager: DialogManager, **kwargs):
 
 create_campaign_dialog = Dialog(
     Window(
-        Const("**Создание новой кампании**\n\nВведите название кампании:"),
-        TextInput(
+        Const("<b>Создание новой кампании</b>\n\nВведите название кампании:"),
+        MessageInput(
             id="name_input",
-            on_success=on_name_entered,
+            func=on_name_entered,
         ),
         Cancel(Const("Отмена")),
-        state=CreateCampaignStates.enter_name,
+        state=CampaignCreate.name,
     ),
     Window(
-        Const("**Введите описание кампании**\n\nМожно пропустить:"),
-        TextInput(
+        Const("<b>Введите описание кампании</b>\n\nМожно пропустить:"),
+        MessageInput(
             id="description_input",
-            on_success=on_description_entered,
+            func=on_description_entered,
         ),
         Row(
             Button(
                 Const("Пропустить"),
                 id="skip_desc",
-                on_click=on_skip_description,
+                on_click=lambda c, b, m: on_skip(c, b, m, "description", ""),
             ),
             Back(Const("Назад")),
         ),
         Cancel(Const("Отмена")),
-        state=CreateCampaignStates.enter_description,
+        state=CampaignCreate.description,
     ),
     Window(
-        Const("**Введите иконку для кампании**\n\nМожно пропустить:"),
+        Const("<b>Отправьте иконку для кампании</b>\n\nМожно пропустить:"),
         MessageInput(func=on_icon_entered, content_types=ContentType.PHOTO),
         Row(
-            Button(Const("Пропустить"), id="skip_icon", on_click=on_skip_icon),
+            Button(
+                Const("Пропустить"),
+                id="skip_icon",
+                on_click=lambda c, b, m: on_skip(c, b, m, "icon", None),
+            ),
             Back(Const("Назад")),
         ),
         Cancel(Const("Отмена")),
-        state=CreateCampaignStates.enter_icon,
+        state=CampaignCreate.icon,
+    ),
+    Window(
+        Const("Сделать компанию <b>публичной</b> или <b>приватной</b>?"),
+        Row(
+            Button(
+                Const("Публичной"),
+                id="make_public",
+                on_click=lambda c, b, m: on_privacy_entered(c, b, m, False),
+            ),
+            Button(
+                Const("Приватной"),
+                id="make_public",
+                on_click=lambda c, b, m: on_privacy_entered(c, b, m, True),
+            ),
+        ),
+        Cancel(Const("Отмена")),
+        state=CampaignCreate.privacy,
     ),
     Window(
         DynamicMedia("icon", when="icon"),
         Format(
-            "**Подтверждение создания**\n\n"
+            "<b>Подтверждение создания</b>\n\n"
             "Название: {name}\n"
             "Описание: {description}\n"
             "Создать кампанию?"
@@ -188,7 +214,7 @@ create_campaign_dialog = Dialog(
         Button(Const("Создать"), id="confirm", on_click=on_confirm),
         Back(Const("Назад")),
         Cancel(Const("Отмена")),
-        state=CreateCampaignStates.confirm,
+        state=CampaignCreate.confirm,
         getter=get_confirm_data,
     ),
 )

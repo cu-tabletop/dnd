@@ -1,13 +1,13 @@
 import base64
 from io import BytesIO
 
+from PIL import Image as PILImage
 from django.core.files.base import ContentFile
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
 from ninja.responses import Response
-from PIL import Image as PILImage
 
 from dnd.models import Campaign, CampaignMembership, Player
 from dnd.schemas import (
@@ -96,9 +96,10 @@ def get_campaign_info_api(
     campaigns = Campaign.objects.filter(private=False)
 
     if user_id:
+        user = Player.objects.get(telegram_id=user_id)
         user_campaigns = Campaign.objects.filter(
             id__in=CampaignMembership.objects.filter(
-                user_id=user_id
+                user_id=user.id
             ).values_list("campaign_id", flat=True)
         )
         campaigns = campaigns.union(user_campaigns)

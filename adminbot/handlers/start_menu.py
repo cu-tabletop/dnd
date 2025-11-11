@@ -4,9 +4,9 @@ from aiogram.types import CallbackQuery
 from aiogram_dialog import Dialog, Window, DialogManager
 from aiogram_dialog.widgets.kbd import Button, Column
 from aiogram_dialog.widgets.text import Const
-from states.create_campaign import CreateCampaignStates
 
 from settings import settings
+from states.create_campaign import CampaignCreate
 from states.mainmenu import MainMenuStates
 
 router = Router()
@@ -30,7 +30,7 @@ CAMPAIGNS = [
 async def on_create_campaign(
     callback: CallbackQuery, button: Button, dialog_manager: DialogManager
 ):
-    await dialog_manager.start(CreateCampaignStates.enter_name)
+    await dialog_manager.start(CampaignCreate.name)
 
 
 async def on_select_campaign(
@@ -64,7 +64,7 @@ async def cmd_main_menu(message: types.Message, dialog_manager: DialogManager):
 
 start_menu_dialog = Dialog(
     Window(
-        Const("**Главное меню DnD бота**\n\nВыберите кампанию:"),
+        Const("<b>Главное меню DnD бота</b>\n\nВыберите кампанию:"),
         Button(
             Const("Cоздать новую кампанию"),
             id="create_campaign",
