@@ -5,12 +5,14 @@ from aiogram import Router
 from aiogram.enums import ContentType
 from aiogram.types import User, Message
 from aiogram_dialog import DialogManager, Dialog, Window
+from aiogram_dialog.api.entities import MediaAttachment
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Cancel
+from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Format, Const
 from httpx import AsyncClient
 
-from services.character import parse_character_data
+from services.character import parse_character_data, CharacterData
 from settings import settings
 from states.campaign import CampaignDialog
 
@@ -42,13 +44,27 @@ async def char_getter(
         character_data = json.loads(data["data"])
         ret["chardata"] = character_data
 
-        str_data = data["data"]
-        info = parse_character_data(character_data)
+        info: CharacterData = parse_character_data(character_data)
         ret["chardata_preview"] = (
-            f"Его имя {info.name}\n"
-            f"Его уровень {info.level}\n"
-            f"Его трейты {info.traits}\n"
+            f"<b>Имя:</b> {info.name}\n"
+            f"<b>Класс:</b> {info.klass} {f'({info.subclass})' if info.subclass else ''}\n"
+            f"<b>Уровень:</b> {info.level}\n"
+            f"<b>Хиты:</b> {info.hp.current}/{info.hp.max} {f'(+{info.hp.temp} временное)' if info.hp.temp else ''}\n"
+            f"<b>Класс брони:</b> {info.hp.ac}\n"
+            f"<b>Скорость:</b> {info.hp.speed} фт.\n"
+            f"<b>Раса:</b> {info.race}\n"
+            f"<b>Предыстория:</b> {info.background}\n"
+            f"<b>Мировоззрение:</b> {info.alignment}"
         )
+        avatar_url = character_data.get("avatar", {}).get("webp")
+
+        avatar = None
+        if avatar_url:
+            avatar = MediaAttachment(
+                url=avatar_url,
+                type=ContentType.PHOTO,
+            )
+        ret["avatar"] = avatar
     return ret
 
 
@@ -90,8 +106,9 @@ router.include_router(
     Dialog(
         Window(
             Const("Импорт вашего персонажа", when="to_import"),
+            DynamicMedia("avatar", when="avatar"),
             Format(
-                "ну вот типо превью твоего персонажа, вот информация ес чо:\n\n{chardata_preview}",
+                "{chardata_preview}",
                 when="preview_available",
             ),
             Button(
