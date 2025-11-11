@@ -91,7 +91,7 @@ class TestGetCampaignInfo(APITestCase):
         CampaignMembership.objects.create(
             user=self.owner, campaign=new_campaign
         )
-        response = self.client.get(self.url, {"user_id": self.owner.id})
+        response = self.client.get(self.url, {"user_id": self.owner.telegram_id})
         self.assertEqual(response.status_code, 200)
         self.assertTrue(isinstance(response.json(), list))
         self.assertGreaterEqual(len(response.json()), 2)
