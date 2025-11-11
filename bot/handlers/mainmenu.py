@@ -150,7 +150,7 @@ router.include_router(
                 ),
                 Button(
                     Const("Ваншоты"),
-                    on_click=lambda c, b, m: m.switch_to(MainMenu.oneshots),
+                    on_click=lambda c, b, m: c.answer("Work in progress"),
                     id="oneshots",
                 ),
                 Button(

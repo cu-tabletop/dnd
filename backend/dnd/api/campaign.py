@@ -77,6 +77,7 @@ def get_campaign_info_api(
     request: HttpRequest,
     campaign_id: int | None = None,
     user_id: int | None = None,
+    owned: bool | None = None,
 ):
     if campaign_id:
         campaign_obj = get_object_or_404(Campaign, id=campaign_id)
@@ -93,15 +94,26 @@ def get_campaign_info_api(
 
         return campaign_obj
 
-    campaigns = Campaign.objects.filter(private=False)
+    if not owned:
+        campaigns = Campaign.objects.filter(private=False)
+    else:
+        campaigns = Campaign.objects.none()
 
     if user_id:
         user = Player.objects.get(telegram_id=user_id)
-        user_campaigns = Campaign.objects.filter(
-            id__in=CampaignMembership.objects.filter(
-                user_id=user.id
-            ).values_list("campaign_id", flat=True)
-        )
+        if not owned:
+            user_campaigns = Campaign.objects.filter(
+                id__in=CampaignMembership.objects.filter(
+                    user_id=user.id,
+                ).values_list("campaign_id", flat=True)
+            )
+        else:
+            user_campaigns = Campaign.objects.filter(
+                id__in=CampaignMembership.objects.filter(
+                    user_id=user.id,
+                    status=2,
+                ).values_list("campaign_id", flat=True)
+            )
         campaigns = campaigns.union(user_campaigns)
 
     return list(campaigns)
