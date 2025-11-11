@@ -4,12 +4,14 @@ from aiogram.types import CallbackQuery
 from aiogram_dialog import Dialog, Window, DialogManager
 from aiogram_dialog.widgets.kbd import Button, Column
 from aiogram_dialog.widgets.text import Const
+from dialogs.states import CompanyManagerSG1
 from states.create_campaign import CreateCampaignStates
 
 from settings import settings
 from states.mainmenu import MainMenuStates
 
 router = Router()
+
 
 # ! Предполагается что мы будем фетчить кампании из ДБ
 # ! Данный функционал ещё не реализован
@@ -59,7 +61,7 @@ def get_campaigns_keyboard():
 
 @router.message(Command(commands=["start", "menu"]))
 async def cmd_main_menu(message: types.Message, dialog_manager: DialogManager):
-    await dialog_manager.start(MainMenuStates.main)
+    await dialog_manager.start(CompanyManagerSG1.main)
 
 
 start_menu_dialog = Dialog(
