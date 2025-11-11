@@ -22,7 +22,9 @@ async def get_user_campaigns(telegram_id: int) -> Optional[List[dict]]:
 
             data = response.json()
 
-            logger.debug("Backend returned the following campaigns data: %s", data)
+            logger.debug(
+                "Backend returned the following campaigns data: %s", data
+            )
 
             if isinstance(data, list):
                 return data
