@@ -198,7 +198,6 @@ confirm_edit_window = Window(
         Const("⬅️ Назад"),
         id="back_from_confirm",
         state=campaign_states.EditCampaignInfo.select_field,
-        show_mode=mode,
     ),
     Cancel(Const("❌ Отмена")),
     state=campaign_states.EditCampaignInfo.confirm,

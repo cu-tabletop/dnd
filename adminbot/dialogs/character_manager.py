@@ -1,413 +1,325 @@
-from datetime import datetime
+import logging
 from aiogram import Router
+from aiogram.types import BufferedInputFile
 from aiogram_dialog import Dialog, Window, DialogManager
-from aiogram_dialog.widgets.kbd import (
-    Button,
-    Back,
-    # Cancel,
-    ListGroup,
-    Select,
-    Group,
-    # Row,
-    Column,
-)
+from aiogram_dialog.widgets.kbd import Button, Row, Group, Back, Cancel, Select
 from aiogram_dialog.widgets.text import Const, Format, Multi
-from aiogram.types import CallbackQuery  # , Message
+from aiogram_dialog.widgets.input import TextInput, ManagedTextInput
+from aiogram.types import Message, CallbackQuery
+from functools import partial
 
 from services.api_client import api_client
 from . import states as campaign_states
 
-# === ГЕТЕРЫ ===
+logger = logging.getLogger(__name__)
 
 
-async def get_characters_data(dialog_manager: DialogManager, **kwargs):
-    """Получение данных о персонажах кампании через API"""
-    campaign = dialog_manager.dialog_data.get("selected_campaign", {})
-    campaign_id = campaign.get("id")
-
-    if not campaign_id:
-        return {
-            "characters": [],
-            "campaign_title": "Неизвестная группа",
-            "total_characters": 0,
-            "active_characters": 0,
-            "average_level": 0,
-        }
-
-    # Получаем персонажей через API
-    characters = await api_client.get_campaign_characters(campaign_id)
-
-    # Обрабатываем данные персонажей
-    processed_characters = []
-    total_level = 0
-    active_characters = 0
-
-    for char in characters:
-        # Извлекаем данные из поля data
-        char_data = char.get("data", {})
-        status = char_data.get("status", "активен")
-
-        processed_char = {
-            "id": char.get("id"),
-            "name": char_data.get("name", "Безымянный"),
-            "level": char_data.get("level", 1),
-            "class": char_data.get("class", "⚔️ Воин"),
-            "race": char_data.get("race", "Неизвестно"),
-            "player": char_data.get(
-                "player", f"Игрок {char.get('owner_id', '?')}"
-            ),
-            "status": status,
-            "hp_current": char_data.get("hp_current", 10),
-            "hp_max": char_data.get("hp_max", 10),
-            "xp": char_data.get("xp", 0),
-            "last_activity": char_data.get("last_activity", "Неизвестно"),
-        }
-        processed_characters.append(processed_char)
-        total_level += processed_char["level"]
-
-        if status == "активен":
-            active_characters += 1
-
-    average_level = (
-        total_level / len(processed_characters) if processed_characters else 0
+# === Геттеры ===
+async def get_characters(dialog_manager: DialogManager, **kwargs):
+    selected_campaign = dialog_manager.start_data.get(  # type: ignore
+        "selected_campaign", {}
     )
-
-    return {
-        "characters": processed_characters,
-        "campaign_title": campaign.get("title", "Группа"),
-        "campaign_id": campaign_id,
-        "total_characters": len(processed_characters),
-        "active_characters": active_characters,
-        "average_level": round(average_level, 1),
-    }
+    # logger.debug(selected_campaign)
+    dialog_manager.dialog_data["selected_campaign"] = selected_campaign
+    company_id = selected_campaign.get("id", 0)
+    characters = await api_client.get_campaign_characters(company_id)
+    logger.debug(characters)
+    return {"characters": characters}
 
 
-async def get_character_detail_data(dialog_manager: DialogManager, **kwargs):
-    """Получение детальной информации о персонаже через API"""
-    selected_character_id = dialog_manager.dialog_data.get(
-        "selected_character_id"
-    )
-
-    if not selected_character_id:
-        return {
-            "character": {
-                "name": "Персонаж не выбран",
-                "level": 0,
-                "class": "Неизвестно",
-                "race": "Неизвестно",
-                "player": "Неизвестно",
-                "status": "неактивен",
-                "hp_current": 0,
-                "hp_max": 0,
-                "xp": 0,
-                "last_activity": "Неизвестно",
-            },
-            "campaign_title": "Неизвестная группа",
-        }
-
-    # Получаем данные персонажа через API
-    character_data = await api_client.get_character(int(selected_character_id))
-
-    if not character_data:
-        return {
-            "character": {
-                "name": "Персонаж не найден",
-                "level": 0,
-                "class": "Неизвестно",
-                "race": "Неизвестно",
-                "player": "Неизвестно",
-                "status": "неактивен",
-                "hp_current": 0,
-                "hp_max": 0,
-                "xp": 0,
-                "last_activity": "Неизвестно",
-            },
-            "campaign_title": dialog_manager.dialog_data.get(
-                "selected_campaign", {}
-            ).get("title", "Группа"),
-        }
-
-    # Обрабатываем данные персонажа
-    char_data = character_data.get("data", {})
-    character = {
-        "id": character_data.get("id"),
-        "name": char_data.get("name", "Безымянный"),
-        "level": char_data.get("level", 1),
-        "class": char_data.get("class", "⚔️ Воин"),
-        "race": char_data.get("race", "Неизвестно"),
-        "player": char_data.get(
-            "player", f"Игрок {character_data.get('owner_id', '?')}"
-        ),
-        "status": char_data.get("status", "активен"),
-        "hp_current": char_data.get("hp_current", 10),
-        "hp_max": char_data.get("hp_max", 10),
-        "xp": char_data.get("xp", 0),
-        "last_activity": char_data.get("last_activity", "Неизвестно"),
-    }
-
-    # Дополнительные вычисляемые поля
-    hp_current = character["hp_current"]
-    hp_max = character["hp_max"]
-    hp_percentage = (hp_current / hp_max) * 100 if hp_max > 0 else 0
-    hp_bar = "█" * int(hp_percentage / 10) + "░" * (
-        10 - int(hp_percentage / 10)
-    )
-
-    return {
-        "character": character,
-        "campaign_title": dialog_manager.dialog_data.get(
-            "selected_campaign", {}
-        ).get("title", "Группа"),
-        "hp_percentage": int(hp_percentage),
-        "hp_bar": hp_bar,
-        "next_level_xp": character["level"] * 1000 + 1000,
-        "xp_progress": (character["xp"] % 1000) / 10
-        if character["xp"] > 0
-        else 0,
-    }
+async def get_character_data(dialog_manager: DialogManager, **kwargs):
+    character_id = dialog_manager.dialog_data.get("character_id", 0)
+    character = await api_client.get_character(character_id)
+    logger.debug(character)
+    return {"character": character}
 
 
-# === КНОПКИ ===
-
-
+# === Кнопки ===
 async def on_character_selected(
-    callback: CallbackQuery,
-    widget: Select,
-    dialog_manager: DialogManager,
-    item_id: str,
+    callback: CallbackQuery, widget: Select, manager: DialogManager, item_id: str
 ):
-    """Обработчик выбора персонажа"""
-    dialog_manager.dialog_data["selected_character_id"] = item_id
-    await dialog_manager.switch_to(
-        campaign_states.ManageCharacters.view_character
-    )
+    manager.dialog_data["character_id"] = int(item_id)
+    await manager.next()
 
 
-async def on_edit_character(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+# Обработчики для меню персонажа
+async def on_change_level(
+    callback: CallbackQuery, button: Button, manager: DialogManager
 ):
-    """Обработчик редактирования персонажа"""
-    selected_character_id = dialog_manager.dialog_data.get(
-        "selected_character_id"
-    )
-
-    if not selected_character_id:
-        await callback.answer("❌ Сначала выберите персонажа", show_alert=True)
-        return
-
-    character_data = await api_client.get_character(int(selected_character_id))
-    if not character_data:
-        await callback.answer("❌ Персонаж не найден", show_alert=True)
-        return
-
-    character_name = character_data.get("data", {}).get("name", "Безымянный")
-    await callback.answer(
-        f"✏️ Редактирование персонажа '{character_name}' будет доступно в следующем "
-        "обновлении",
-        show_alert=True,
-    )
+    await manager.switch_to(campaign_states.ManageCharacters.change_level)
 
 
-async def on_character_status_toggle(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+async def on_change_rating(
+    callback: CallbackQuery, button: Button, manager: DialogManager
 ):
-    """Обработчик изменения статуса персонажа через API"""
-    selected_character_id = dialog_manager.dialog_data.get(
-        "selected_character_id"
-    )
+    await manager.switch_to(campaign_states.ManageCharacters.change_rating)
 
-    if not selected_character_id:
-        await callback.answer("❌ Сначала выберите персонажа", show_alert=True)
-        return
 
-    character_data = await api_client.get_character(int(selected_character_id))
-    if not character_data:
-        await callback.answer("❌ Персонаж не найден", show_alert=True)
-        return
+async def on_view_inventory(
+    callback: CallbackQuery, button: Button, manager: DialogManager
+):
+    await manager.switch_to(campaign_states.ManageInventory.view_inventory)
 
-    char_data = character_data.get("data", {})
-    current_status = char_data.get("status", "активен")
-    new_status = "неактивен" if current_status == "активен" else "активен"
 
-    # Обновляем статус через API
-    update_data = {"status": new_status}
-    result = await api_client.update_character(
-        int(selected_character_id), update_data
-    )
-
-    if "error" in result:
-        await callback.answer(
-            f"❌ Ошибка при изменении статуса: {result['error']}",
-            show_alert=True,
+async def on_download_jpeg(
+    callback: CallbackQuery, button: Button, manager: DialogManager
+):
+    character_id = manager.dialog_data.get("character_id", 0)
+    try:
+        character = await api_client.get_character(character_id)
+        jpeg_data = character.get("data", "").bytes()  # type: ignore
+        filename = character.get("data", {}).get("name", character_id)  # type: ignore
+        await callback.message.answer_document(  # type: ignore
+            document=BufferedInputFile(
+                jpeg_data,
+                filename=f"{filename}.json",
+            )
         )
-    else:
-        await callback.answer(
-            f"✅ Статус персонажа изменен на: {new_status}", show_alert=True
-        )
-        await dialog_manager.update({})
+    except Exception:
+        await callback.message.answer("❌ Ошибка при загрузке файла")  # type: ignore
 
 
-async def on_add_character(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+async def on_change_rating_click(
+    callback: CallbackQuery, button: Button, manager: DialogManager
 ):
-    """Обработчик добавления нового персонажа через API"""
-    campaign = dialog_manager.dialog_data.get("selected_campaign", {})
-    campaign_id = campaign.get("id")
-
-    if not campaign_id:
-        await callback.answer("❌ Не выбрана кампания", show_alert=True)
-        return
-
-    # Создаем нового персонажа через API
-    character_data = {
-        "name": "Новый студент",
-        "level": 1,
-        "class": "🎓 Студент",
-        "race": "Человек",
-        "player": f"Студент {callback.from_user.first_name}",
-        "hp_current": 10,
-        "hp_max": 10,
-        "xp": 0,
-        "status": "активен",
-        "last_activity": datetime.now().strftime("%Y-%m-%d %H:%M"),
-    }
-
-    result = await api_client.upload_character(
-        owner_id=callback.from_user.id,
-        campaign_id=campaign_id,
-        data=character_data,
-    )
-
-    if "error" in result:
-        await callback.answer(
-            f"❌ Ошибка при создании персонажа: {result['error']}",
-            show_alert=True,
-        )
-    else:
-        character_name = result.get("data", {}).get("name", "Новый студент")
-        await callback.answer(
-            f"✅ Персонаж '{character_name}' создан!", show_alert=True
-        )
-        await dialog_manager.update({})
+    """Обработчик нажатия кнопки изменения рейтинга"""
+    await manager.switch_to(campaign_states.ManageCharacters.change_rating)
 
 
-async def on_character_stats(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+async def on_quick_rating_change(
+    callback: CallbackQuery, widget: Button, manager: DialogManager, item_id: str
 ):
-    """Обработчик просмотра статистики персонажа"""
-    selected_character_id = dialog_manager.dialog_data.get(
-        "selected_character_id"
-    )
+    """Обработчик быстрого изменения рейтинга (+/- 1, 5, 10)"""
+    try:
+        character_id = manager.dialog_data.get("character_id", 0)
+        current_character = await api_client.get_character(character_id)
+        current_rating = current_character.get("data", {}).get(  # type: ignore
+            "rating", 0
+        )
+        change = int(item_id)
+        new_rating = current_rating + change
 
-    if not selected_character_id:
-        await callback.answer("❌ Сначала выберите персонажа", show_alert=True)
-        return
+        # Валидация
+        if new_rating < 0:
+            new_rating = 0
+        if new_rating > 1000:
+            new_rating = 1000
 
-    character_data = await get_character_detail_data(dialog_manager)
-    character = character_data["character"]
+        # Обновление
+        await api_client.update_character(
+            character_id, {"rating": new_rating}  # type: ignore
+        )
 
-    # Формируем детальную статистику
-    stats_text = (
-        f"📊 Детальная статистика: {character['name']}\n\n"
-        f"🎯 Уровень: {character['level']}\n"
-        f"⚔️ Класс: {character['class']}\n"
-        f"👤 Раса: {character['race']}\n"
-        f"❤️ Здоровье: {character['hp_current']}/{character['hp_max']}\n"
-        f"⭐ Опыт: {character['xp']}\n"
-        f"👥 Игрок: {character['player']}\n"
-        f"🟢 Статус: {character['status']}\n"
-        f"📅 Активность: {character['last_activity']}\n\n"
-        f"🏰 Кампания: {character_data['campaign_title']}"
-    )
+        # Показываем обновленные данные
+        await manager.show(
+            campaign_states.ManageCharacters.character_menu  # type: ignore
+        )
 
-    await callback.answer(stats_text, show_alert=True)
+    except Exception as e:
+        logger.error(f"Error in quick rating change: {e}")
+        await callback.answer("❌ Ошибка при изменении рейтинга")
 
 
-# === ОКНА ===
+async def on_rating_input(
+    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+):
+    """Обработчик ввода нового рейтинга"""
+    try:
+        rating = int(text)
+        character_id = manager.dialog_data.get("character_id")
 
-# Главное окно списка персонажей
-characters_main_window = Window(
-    Multi(
-        Format("👥 Управление персонажами: {campaign_title}\n\n"),
-        Format("Всего персонажей: {total_characters}\n"),
-        Format("Активных: {active_characters}\n"),
-        Format("Средний уровень: {average_level}\n\n"),
-        Const("Список персонажей:"),
-    ),
-    ListGroup(
-        Button(
-            Format(
-                "🎭 {item[name]} - ур. {item[level]} {item[class]}\n"
-                "👤 {item[player]} | {item[status]}"
-            ),
-            id="character_select",
-            on_click=on_character_selected,  # type: ignore
-        ),
-        id="characters_list",
-        item_id_getter=lambda item: str(item["id"]),
-        items="characters",
-    ),
+        # Валидация рейтинга
+        if rating < 0:
+            await message.answer("❌ Рейтинг не может быть отрицательным")
+            return
+        if rating > 1000:  # Пример ограничения
+            await message.answer("❌ Рейтинг не может превышать 1000")
+            return
+
+        # Обновляем рейтинг через API
+        await api_client.update_character(
+            character_id, {"rating": rating}  # type: ignore
+        )
+
+        await message.answer(f"✅ Рейтинг успешно изменен на {rating}")
+        await manager.switch_to(campaign_states.ManageCharacters.character_menu)
+
+    except ValueError:
+        await message.answer("❌ Пожалуйста, введите целое число")
+    except Exception as e:
+        logger.error(f"Error updating rating: {e}")
+        await message.answer("❌ Ошибка при обновлении рейтинга")
+
+
+# Диалог для изменения уровня
+async def on_level_input(
+    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+):
+    try:
+        level = int(text)
+        character_id = manager.dialog_data.get("character_id", 0)
+        await api_client.update_character(character_id, {"level": level})  # type: ignore
+        await message.answer(f"✅ Уровень изменен на {level}")
+        await manager.back()
+    except ValueError:
+        await message.answer("❌ Введите целое число")
+    except Exception:
+        await message.answer("❌ Ошибка при обновлении уровня")
+
+
+# === Окна ===
+
+# Окно выбора персонажа
+character_window = Window(
+    Const("🧙 Выберите персонажа:"),
     Group(
-        Button(
-            Const("➕ Добавить персонажа"),
-            id="add_character",
-            on_click=on_add_character,
+        Select(
+            Format("{item[data][name]} (Ур. {item[data][level]})"),
+            id="character_select",
+            item_id_getter=lambda x: x.get("id"),
+            items="characters",
+            on_click=on_character_selected,
         ),
         width=1,
     ),
-    Back(Const("⬅️ Назад к кампании")),
-    state=campaign_states.ManageCharacters.main,
-    getter=get_characters_data,
+    Cancel(Const("⬅️ Назад")),
+    state=campaign_states.ManageCharacters.character_selection,
+    getter=get_characters,
 )
 
-# Окно детального просмотра персонажа
-character_detail_window = Window(
+
+# окно для изменения рейтинга
+rating_window = Window(
     Multi(
-        Format("🎭 Детали персонажа: {character[name]}\n\n"),
-        Format("🎯 Уровень: {character[level]}\n"),
-        Format("⚔️ Класс: {character[class]}\n"),
-        Format("👤 Раса: {character[race]}\n"),
-        Format("👥 Игрок: {character[player]}\n"),
-        Format("🟢 Статус: {character[status]}\n\n"),
-        Format("❤️ Здоровье: {character[hp_current]}/{character[hp_max]}\n"),
-        Format("   {hp_bar} {hp_percentage}%\n\n"),
-        Format("⭐ Опыт: {character[xp]}\n"),
-        Format(
-            "📊 До след. уровня: {xp_progress:.1f}% ({next_level_xp} XP)\n\n"
-        ),
-        Format("📅 Последняя активность: {character[last_activity]}"),
+        Format("🏆 Изменение рейтинга для {character[data][name]}"),
+        Format("Текущий рейтинг: {character[data][rating]}"),
+        Const(""),
+        Const("Введите новый рейтинг:"),
+        sep="\n",
     ),
-    Column(
-        Button(
-            Const("✏️ Редактировать"),
-            id="edit_character",
-            on_click=on_edit_character,
+    TextInput(
+        id="rating_input",
+        on_success=on_rating_input,
+    ),
+    Button(
+        Const("⬅️ Назад"),
+        id="back",
+        on_click=lambda c, b, m: m.switch_to(
+            campaign_states.ManageCharacters.character_menu
         ),
-        Button(
-            Const("📊 Подробная статистика"),
-            id="character_stats",
-            on_click=on_character_stats,
-        ),
-        Button(
-            Format(
-                "🔄 {character[status]=='активен' and 'Деактивировать' or 'Активировать'}"
+    ),
+    state=campaign_states.ManageCharacters.change_rating,
+    getter=get_character_data,  # Используем существующий геттер
+)
+
+# Окно быстрого изменения рейтинга
+quick_rating_window = Window(
+    Multi(
+        Format("🏆 Быстрое изменение рейтинга"),
+        Format("Персонаж: {character[data][name]}"),
+        Format("Текущий рейтинг: {character[data][rating]}"),
+        Const(""),
+        Const("Выберите изменение:"),
+        sep="\n",
+    ),
+    Group(
+        Row(
+            Button(
+                Const("+1"),
+                id="rating_plus_1",
+                on_click=partial(on_quick_rating_change, item_id="1"),
             ),
-            id="toggle_status",
-            on_click=on_character_status_toggle,
+            Button(
+                Const("+5"),
+                id="rating_plus_5",
+                on_click=partial(on_quick_rating_change, item_id="5"),
+            ),
+            Button(
+                Const("+10"),
+                id="rating_plus_10",
+                on_click=partial(on_quick_rating_change, item_id="10"),
+            ),
+        ),
+        Row(
+            Button(
+                Const("-1"),
+                id="rating_minus_1",
+                on_click=partial(on_quick_rating_change, item_id="-1"),
+            ),
+            Button(
+                Const("-5"),
+                id="rating_minus_5",
+                on_click=partial(on_quick_rating_change, item_id="-5"),
+            ),
+            Button(
+                Const("-10"),
+                id="rating_minus_10",
+                on_click=partial(on_quick_rating_change, item_id="-10"),
+            ),
+        ),
+        Button(
+            Const("✏️ Ввести точное значение"),
+            id="exact_rating",
+            on_click=on_change_rating_click,
         ),
     ),
-    Back(Const("⬅️ Назад к списку")),
-    state=campaign_states.ManageCharacters.view_character,
-    getter=get_character_detail_data,
+    Button(
+        Const("⬅️ Назад"),
+        id="back",
+        on_click=lambda c, b, m: m.switch_to(
+            campaign_states.ManageCharacters.character_menu
+        ),
+    ),
+    state=campaign_states.ManageCharacters.quick_rating,
+    getter=get_character_data,
 )
 
-# === СОЗДАНИЕ ДИАЛОГА ===
 
-characters_dialog = Dialog(
-    characters_main_window,
-    character_detail_window,
+level_window = Window(
+    Const("Введите новый уровень персонажа:"),
+    TextInput(
+        id="level_input",
+        on_success=on_level_input,
+    ),
+    Back(Const("⬅️ Назад")),
+    state=campaign_states.ManageCharacters.change_level,
 )
 
-# Роутер для character_manager
-character_router = Router()
-character_router.include_router(characters_dialog)
+character_menu_window = Window(
+    Multi(
+        Format("🧙 Персонаж: {character[data][name]}"),
+        Format("⭐ Уровень: {character[data][level]}"),
+        Format("🏆 Рейтинг: {character[data][rating]}"),
+        sep="\n",
+    ),
+    Row(
+        Button(Const("📈 Уровень"), id="change_level", on_click=on_change_level),
+        Button(
+            Const("🏆 Рейтинг"),
+            id="change_rating",
+            on_click=lambda c, b, m: m.switch_to(
+                campaign_states.ManageCharacters.quick_rating
+            ),
+        ),
+    ),
+    Row(
+        Button(Const("🎒 Инвентарь"), id="view_inventory", on_click=on_view_inventory),
+        Button(Const("📥 Скачать JPEG"), id="download_jpeg", on_click=on_download_jpeg),
+    ),
+    Back(Const("⬅️ Назад")),
+    # Cancel(Const("❌ Выход")),
+    state=campaign_states.ManageCharacters.character_menu,
+    getter=get_character_data,
+)
+
+# === Создание диалога и роутера ===
+dialog = Dialog(
+    character_window,
+    character_menu_window,
+    level_window,
+    rating_window,
+    quick_rating_window,
+)
+
+router = Router()
+router.include_router(dialog)

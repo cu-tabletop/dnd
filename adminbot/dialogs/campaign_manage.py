@@ -5,6 +5,7 @@ from aiogram_dialog.widgets.kbd import Button, Group, Cancel
 from aiogram_dialog.widgets.text import Const, Format
 from aiogram.types import CallbackQuery
 
+from services.api_client import api_client
 from . import states as campaign_states
 
 logger = logging.getLogger(__name__)
