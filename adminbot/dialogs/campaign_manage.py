@@ -69,9 +69,9 @@ campaign_manage_window = Window(
             on_click=on_manage_characters,
         ),
         Button(
-            Const("🔐 Настройки доступа"), id="permissions", on_click=on_permissions
+            Const("🧙‍♂️ Управление мастерами"), id="permissions", on_click=on_permissions
         ),
-        Button(Const("📊 Статистика группы"), id="stats", on_click=on_stats),
+        # Button(Const("📊 Статистика группы"), id="stats", on_click=on_stats),
         width=1,
     ),
     Cancel(Const("⬅️ Назад к списку")),

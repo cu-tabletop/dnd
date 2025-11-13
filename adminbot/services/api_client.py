@@ -1,19 +1,16 @@
-import asyncio
 import aiohttp
 import logging
 from typing import Optional, Dict, Any, List
-from settings import settings
-
 import random
+import asyncio
 
-logger = logging.getLogger(__name__)
-
+from ..settings import settings
 
 logger = logging.getLogger(__name__)
 
 
 class MockDnDApiClient:
-    """Заглушка API для тестирования"""
+    """Заглушка API для тестирования с расширенной функциональностью для персонажей"""
 
     def __init__(self):
         self.campaigns = [
@@ -31,22 +28,41 @@ class MockDnDApiClient:
                 "icon": "🐍",
                 "student_count": 4,
             },
+        ]
+        self.characters = [
             {
-                "id": 3,
-                "title": "Когтевран",
-                "description": "Факультет мудрых и любознательных",
-                "icon": "🦅",
-                "student_count": 6,
+                "id": 1,
+                "campaign_id": 1,
+                "name": "Арагорн",
+                "level": 6,
+                "class": "⚔️ Воин",
+                "race": "Человек",
+                "player": "Игрок 1",
+                "status": "активен",
+                "hp_current": 45,
+                "hp_max": 52,
+                "xp": 1250,
+                "last_activity": "15.01.2024",
+                "data": {},
             },
             {
-                "id": 4,
-                "title": "Пуффендуй",
-                "description": "Факультет верных и трудолюбивых",
-                "icon": "🦡",
-                "student_count": 3,
+                "id": 2,
+                "campaign_id": 1,
+                "name": "Гэндальф",
+                "level": 5,
+                "class": "🧙‍♂️ Маг",
+                "race": "Майар",
+                "player": "Игрок 2",
+                "status": "активен",
+                "hp_current": 32,
+                "hp_max": 32,
+                "xp": 1100,
+                "last_activity": "14.01.2024",
+                "data": {},
             },
         ]
-        self.next_id = 5
+        self.next_campaign_id = 3
+        self.next_character_id = 3
 
     async def ping(self) -> Dict[str, Any]:
         await self._simulate_delay()
@@ -59,8 +75,6 @@ class MockDnDApiClient:
 
         if campaign_id:
             return [camp for camp in self.campaigns if camp["id"] == campaign_id]
-
-        # В моках возвращаем все кампании для любого пользователя
         return self.campaigns
 
     async def create_campaign(
@@ -73,7 +87,7 @@ class MockDnDApiClient:
         await self._simulate_delay()
 
         new_campaign = {
-            "id": self.next_id,
+            "id": self.next_campaign_id,
             "title": title,
             "description": description or "Описание отсутствует",
             "icon": icon or "🏰",
@@ -81,18 +95,72 @@ class MockDnDApiClient:
         }
 
         self.campaigns.append(new_campaign)
-        self.next_id += 1
+        self.next_campaign_id += 1
 
         return {
             "message": f"Кампания '{title}' создана успешно",
             "campaign": new_campaign,
         }
 
-    async def add_to_campaign(
-        self, campaign_id: int, owner_id: int, user_id: int
-    ) -> Dict[str, Any]:
+    async def get_campaign_characters(self, campaign_id: int) -> List[Dict[str, Any]]:
+        """Получить персонажей кампании"""
         await self._simulate_delay()
-        return {"message": f"Пользователь {user_id} добавлен в кампанию {campaign_id}"}
+        return [char for char in self.characters if char["campaign_id"] == campaign_id]
+
+    async def get_character(self, char_id: int) -> Optional[Dict[str, Any]]:
+        """Получить конкретного персонажа"""
+        await self._simulate_delay()
+        return next((char for char in self.characters if char["id"] == char_id), None)
+
+    async def upload_character(
+        self, owner_id: int, campaign_id: int, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Создать нового персонажа"""
+        await self._simulate_delay()
+
+        new_character = {
+            "id": self.next_character_id,
+            "owner_id": owner_id,
+            "owner_telegram_id": owner_id,
+            "campaign_id": campaign_id,
+            "data": data,
+            "name": data.get("name", "Безымянный"),
+            "level": data.get("level", 1),
+            "class": data.get("class", "⚔️ Воин"),
+            "race": data.get("race", "Неизвестно"),
+            "player": data.get("player", "Неизвестный игрок"),
+            "status": "активен",
+            "hp_current": data.get("hp_current", 10),
+            "hp_max": data.get("hp_max", 10),
+            "xp": data.get("xp", 0),
+            "last_activity": "сегодня",
+        }
+
+        self.characters.append(new_character)
+        self.next_character_id += 1
+
+        return {
+            "message": f"Персонаж '{new_character['name']}' создан",
+            "character": new_character,
+        }
+
+    async def update_character(
+        self, char_id: int, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Обновить данные персонажа"""
+        await self._simulate_delay()
+
+        character = next(
+            (char for char in self.characters if char["id"] == char_id), None
+        )
+        if character:
+            character.update(data)
+            character["data"].update(data)
+            return {
+                "message": f"Персонаж '{character['name']}' обновлен",
+                "character": character,
+            }
+        return {"error": "Персонаж не найден"}
 
     async def _simulate_delay(self):
         """Имитация задержки сети"""
@@ -131,7 +199,7 @@ class RealDnDApiClient:
                         else:
                             return [data]
                     else:
-                        logger.error(f"API error: {response.status}")
+                        logger.error(f"API error getting campaigns: {response.status}")
                         return []
         except Exception as e:
             logger.error(f"Error getting campaigns: {e}")
@@ -164,40 +232,80 @@ class RealDnDApiClient:
                     else:
                         error_text = await response.text()
                         logger.error(
-                            f"API error creating campaign: {response.status} - "
-                            f"{error_text}"
+                            f"API error creating campaign: {response.status} - {error_text}"
                         )
                         return {"error": f"Ошибка API: {response.status}"}
         except Exception as e:
             logger.error(f"Error creating campaign: {e}")
             return {"error": f"Ошибка соединения: {str(e)}"}
 
-    async def add_to_campaign(
-        self, campaign_id: int, owner_id: int, user_id: int
-    ) -> Dict[str, Any]:
+    async def get_campaign_characters(self, campaign_id: int) -> List[Dict[str, Any]]:
+        """Получить персонажей кампании через API"""
         try:
-            payload = {
-                "campaign_id": campaign_id,
-                "owner_id": owner_id,
-                "user_id": user_id,
-            }
+            # В реальном API нет прямого метода для получения персонажей кампании
+            # Будем использовать обходной путь или вернем пустой список
+            logger.warning("Метод get_campaign_characters не реализован в API")
+            return []
+        except Exception as e:
+            logger.error(f"Error getting campaign characters: {e}")
+            return []
+
+    async def get_character(self, char_id: int) -> Optional[Dict[str, Any]]:
+        """Получить конкретного персонажа через API"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{self.base_url}/api/character/get/", params={"char_id": char_id}
+                ) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    else:
+                        logger.error(f"API error getting character: {response.status}")
+                        return None
+        except Exception as e:
+            logger.error(f"Error getting character: {e}")
+            return None
+
+    async def upload_character(
+        self, owner_id: int, campaign_id: int, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Создать нового персонажа через API"""
+        try:
+            payload = {"owner_id": owner_id, "campaign_id": campaign_id, "data": data}
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{self.base_url}/api/campaign/add/", json=payload
+                    f"{self.base_url}/api/character/post/", json=payload
                 ) as response:
-                    if response.status in [200, 201]:
-                        return await response.json()
+                    if response.status == 201:
+                        result = await response.json()
+                        return result
                     else:
-                        logger.error(f"API error adding to campaign: {response.status}")
-                        return {"error": f"API error: {response.status}"}
+                        error_text = await response.text()
+                        logger.error(
+                            f"API error uploading character: {response.status} - {error_text}"
+                        )
+                        return {"error": f"Ошибка API: {response.status}"}
         except Exception as e:
-            logger.error(f"Error adding to campaign: {e}")
-            return {"error": str(e)}
+            logger.error(f"Error uploading character: {e}")
+            return {"error": f"Ошибка соединения: {str(e)}"}
+
+    async def update_character(
+        self, char_id: int, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Обновить данные персонажа через API"""
+        try:
+            # В реальном API нет прямого метода обновления персонажа
+            # Используем upload_character с существующим ID или возвращаем ошибку
+            logger.warning("Метод update_character не реализован в API")
+            return {"error": "Метод обновления персонажа не реализован в API"}
+        except Exception as e:
+            logger.error(f"Error updating character: {e}")
+            return {"error": f"Ошибка соединения: {str(e)}"}
 
 
 # Глобальная переменная для переключения режима
-USE_MOCK_API = True  # По умолчанию используем моки
+USE_MOCK_API = True
 
 
 def get_api_client():
@@ -205,7 +313,7 @@ def get_api_client():
     if USE_MOCK_API:
         return MockDnDApiClient()
     else:
-        return RealDnDApiClient(settings.BACKEND_URL)
+        return RealDnDApiClient(settings.BACKEND_URL)  # Замените на ваш URL
 
 
 # Глобальный экземпляр клиента

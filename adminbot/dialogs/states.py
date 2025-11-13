@@ -34,9 +34,7 @@ class ManageCharacters(StatesGroup):
     remove_character = State()
 
 
-class PermissionsManager(StatesGroup):
+class EditPermissions(StatesGroup):
     main = State()
-    add_user = State()
-    remove_user = State()
-    edit_permission = State()
-    select_user = State()
+    select_permission = State()
+    invite_master = State()
