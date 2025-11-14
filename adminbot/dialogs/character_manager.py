@@ -39,7 +39,10 @@ async def get_character_data(dialog_manager: DialogManager, **kwargs):
 
 # === Кнопки ===
 async def on_character_selected(
-    callback: CallbackQuery, widget: Select, manager: DialogManager, item_id: str
+    callback: CallbackQuery,
+    widget: Select,
+    manager: DialogManager,
+    item_id: str,
 ):
     manager.dialog_data["character_id"] = int(item_id)
     await manager.next()
@@ -90,7 +93,10 @@ async def on_change_rating_click(
 
 
 async def on_quick_rating_change(
-    callback: CallbackQuery, widget: Button, manager: DialogManager, item_id: str
+    callback: CallbackQuery,
+    widget: Button,
+    manager: DialogManager,
+    item_id: str,
 ):
     """Обработчик быстрого изменения рейтинга (+/- 1, 5, 10)"""
     try:
@@ -110,7 +116,8 @@ async def on_quick_rating_change(
 
         # Обновление
         await api_client.update_character(
-            character_id, {"rating": new_rating}  # type: ignore
+            character_id,
+            {"rating": new_rating},  # type: ignore
         )
 
         # Показываем обновленные данные
@@ -122,7 +129,10 @@ async def on_quick_rating_change(
 
 
 async def on_rating_input(
-    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+    message: Message,
+    widget: ManagedTextInput,
+    manager: DialogManager,
+    text: str,
 ):
     """Обработчик ввода нового рейтинга"""
     try:
@@ -139,11 +149,14 @@ async def on_rating_input(
 
         # Обновляем рейтинг через API
         await api_client.update_character(
-            character_id, {"rating": rating}  # type: ignore
+            character_id,
+            {"rating": rating},  # type: ignore
         )
 
         await message.answer(f"✅ Рейтинг успешно изменен на {rating}")
-        await manager.switch_to(campaign_states.ManageCharacters.character_menu)
+        await manager.switch_to(
+            campaign_states.ManageCharacters.character_menu
+        )
 
     except ValueError:
         await message.answer("❌ Пожалуйста, введите целое число")
@@ -154,7 +167,10 @@ async def on_rating_input(
 
 # Диалог для изменения уровня
 async def on_level_input(
-    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+    message: Message,
+    widget: ManagedTextInput,
+    manager: DialogManager,
+    text: str,
 ):
     try:
         level = int(text)
@@ -294,7 +310,9 @@ character_menu_window = Window(
         sep="\n",
     ),
     Row(
-        Button(Const("📈 Уровень"), id="change_level", on_click=on_change_level),
+        Button(
+            Const("📈 Уровень"), id="change_level", on_click=on_change_level
+        ),
         Button(
             Const("🏆 Рейтинг"),
             id="change_rating",
@@ -304,8 +322,16 @@ character_menu_window = Window(
         ),
     ),
     Row(
-        Button(Const("🎒 Инвентарь"), id="view_inventory", on_click=on_view_inventory),
-        Button(Const("📥 Скачать JPEG"), id="download_jpeg", on_click=on_download_jpeg),
+        Button(
+            Const("🎒 Инвентарь"),
+            id="view_inventory",
+            on_click=on_view_inventory,
+        ),
+        Button(
+            Const("📥 Скачать JPEG"),
+            id="download_jpeg",
+            on_click=on_download_jpeg,
+        ),
     ),
     Back(Const("⬅️ Назад")),
     Cancel(Const("❌ Выход")),

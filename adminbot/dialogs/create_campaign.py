@@ -31,7 +31,9 @@ async def get_confirm_data(dialog_manager: DialogManager, **kwargs):
 
     return {
         "title": dialog_manager.dialog_data.get("title", ""),
-        "description": dialog_manager.dialog_data.get("description", "не указано"),
+        "description": dialog_manager.dialog_data.get(
+            "description", "не указано"
+        ),
         "icon": icon,
     }
 
@@ -61,7 +63,9 @@ async def on_icon_entered(
     message: Message, widget: MessageInput, dialog_manager: DialogManager
 ):
     if message.photo:
-        dialog_manager.dialog_data["icon_json"] = message.photo[-1].model_dump_json()
+        dialog_manager.dialog_data["icon_json"] = message.photo[
+            -1
+        ].model_dump_json()
 
     else:
         # TODO:
