@@ -35,6 +35,12 @@ class EditPermissions(StatesGroup):
 
 
 class ManageCharacters(StatesGroup):
-    main = State()
-    view_character = State()
-    edit_character = State()
+    character_selection = State()
+    character_menu = State()
+    change_level = State()
+    change_rating = State()
+    quick_rating = State()
+
+
+class ManageInventory(StatesGroup):
+    view_inventory = State()

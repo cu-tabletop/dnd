@@ -5,7 +5,6 @@ from aiogram_dialog.widgets.kbd import Button, Group, Cancel
 from aiogram_dialog.widgets.text import Const, Format
 from aiogram.types import CallbackQuery
 
-from services.api_client import api_client
 from . import states as campaign_states
 
 logger = logging.getLogger(__name__)
@@ -13,14 +12,12 @@ logger = logging.getLogger(__name__)
 
 # === Гетеры ===
 async def get_campaign_manage_data(dialog_manager: DialogManager, **kwargs):
-    campaign = dialog_manager.start_data.get("selected_campaign", {})
+    campaign = dialog_manager.start_data.get("selected_campaign", {})  # type: ignore
     dialog_manager.dialog_data["selected_campaign"] = campaign
     # logger.debug(f"Managing campaign data: {campaign}")
     return {
         "campaign_title": campaign.get("title", "Неизвестная группа"),
-        "campaign_description": campaign.get(
-            "description", "Описание отсутствует"
-        ),
+        "campaign_description": campaign.get("description", "Описание отсутствует"),
         "campaign_id": campaign.get("id", "N/A"),
     }
 
@@ -32,9 +29,7 @@ async def on_edit_info(
     await dialog_manager.start(
         campaign_states.EditCampaignInfo.select_field,
         data={
-            "selected_campaign": dialog_manager.dialog_data.get(
-                "selected_campaign", {}
-            )
+            "selected_campaign": dialog_manager.dialog_data.get("selected_campaign", {})
         },
     )
 
@@ -43,11 +38,10 @@ async def on_manage_characters(
     callback: CallbackQuery, button: Button, dialog_manager: DialogManager
 ):
     selected_campaign = dialog_manager.dialog_data.get("selected_campaign", {})
-    logger.info(
-        f"Selected campaign for managing characters: {selected_campaign}"
-    )
+    # await dialog_manager.update({"selected_campaign": selected_campaign})
+    logger.debug(selected_campaign)
     await dialog_manager.start(
-        campaign_states.ManageCharacters.main,
+        campaign_states.ManageCharacters.character_selection,
         data={"selected_campaign": selected_campaign},
     )
 
@@ -57,11 +51,7 @@ async def on_permissions(
 ):
     await dialog_manager.start(
         campaign_states.EditPermissions.main,
-        data={
-            "selected_campaign": dialog_manager.dialog_data.get(
-                "selected_campaign"
-            )
-        },
+        data={"selected_campaign": dialog_manager.dialog_data.get("selected_campaign")},
     )
 
 

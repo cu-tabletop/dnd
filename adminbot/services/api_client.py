@@ -40,6 +40,7 @@ class MockDnDApiClient:
                 "data": {
                     "name": "Элриндор",
                     "level": 5,
+                    "rating": -1,
                     "class": "🧙‍♂️ Маг",
                     "race": "Эльф",
                     "player": "Алексей",
@@ -58,6 +59,7 @@ class MockDnDApiClient:
                 "data": {
                     "name": "Торгрим",
                     "level": 4,
+                    "rating": 10,
                     "class": "⚔️ Воин",
                     "race": "Дварф",
                     "player": "Дмитрий",

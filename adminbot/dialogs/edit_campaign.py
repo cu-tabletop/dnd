@@ -10,7 +10,7 @@ from . import states as campaign_states
 
 # === Гетеры ===
 async def get_campaign_edit_data(dialog_manager: DialogManager, **kwargs):
-    campaign = dialog_manager.start_data.get("selected_campaign", {})
+    campaign = dialog_manager.start_data.get("selected_campaign", {})  # type: ignore
     dialog_manager.dialog_data["selected_campaign"] = campaign
     return {
         "campaign_title": campaign.get("title", "Неизвестная группа"),
@@ -97,7 +97,7 @@ async def on_edit_confirm(
     callback: CallbackQuery, button: Button, dialog_manager: DialogManager
 ):
     campaign = dialog_manager.dialog_data.get("selected_campaign", {})
-    await callback.answer(
+    await callback.answer(  # type: ignore
         f"✅ Изменения для {campaign.get('title')} сохранены!", show_alert=True
     )
     await dialog_manager.back()

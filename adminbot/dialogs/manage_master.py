@@ -19,7 +19,7 @@ from . import states as campaign_states
 
 async def get_permissions_data(dialog_manager: DialogManager, **kwargs):
     """Получение данных о правах доступа к кампании"""
-    campaign = dialog_manager.start_data.get("selected_campaign", {})
+    campaign = dialog_manager.start_data.get("selected_campaign", {})  # type: ignore
     dialog_manager.dialog_data["selected_campaign"] = campaign
     campaign_id = campaign.get("id")
 
@@ -187,11 +187,11 @@ async def on_invite_user(
     try:
         # Пытаемся получить ID пользователя (в реальности через API вашей системы)
         # Здесь заглушка - используем хэш от username как "ID"
-        user_id = (await message.bot.get_chat(f"@{username}")).id
+        user_id = (await message.bot.get_chat(f"@{username}")).id  # type: ignore
 
         campaign = dialog_manager.dialog_data.get("selected_campaign", {})
         campaign_id = campaign.get("id")
-        owner_id = message.from_user.id
+        owner_id = message.from_user.id  # type: ignore
 
         # Добавляем пользователя через API
         result = await api_client.edit_permissions(
@@ -339,7 +339,7 @@ invite_master_window = Window(
         id="back",
         state=campaign_states.EditPermissions.main,
     ),
-    TextInput(id="master_username", on_success=on_invite_user),
+    TextInput(id="master_username", on_success=on_invite_user),  # type: ignore
     state=campaign_states.EditPermissions.invite_master,
 )
 

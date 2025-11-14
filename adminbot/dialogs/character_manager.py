@@ -1,6 +1,8 @@
 import logging
 from aiogram import Router
 from aiogram.types import BufferedInputFile
+from aiogram import Router
+from aiogram.types import BufferedInputFile
 from aiogram_dialog import Dialog, Window, DialogManager
 from aiogram_dialog.widgets.kbd import Button, Row, Group, Back, Cancel, Select
 from aiogram_dialog.widgets.text import Const, Format, Multi
@@ -24,10 +26,21 @@ async def get_characters(dialog_manager: DialogManager, **kwargs):
     company_id = selected_campaign.get("id", 0)
     characters = await api_client.get_campaign_characters(company_id)
     logger.debug(characters)
+    selected_campaign = dialog_manager.start_data.get(  # type: ignore
+        "selected_campaign", {}
+    )
+    # logger.debug(selected_campaign)
+    dialog_manager.dialog_data["selected_campaign"] = selected_campaign
+    company_id = selected_campaign.get("id", 0)
+    characters = await api_client.get_campaign_characters(company_id)
+    logger.debug(characters)
     return {"characters": characters}
 
 
 async def get_character_data(dialog_manager: DialogManager, **kwargs):
+    character_id = dialog_manager.dialog_data.get("character_id", 0)
+    character = await api_client.get_character(character_id)
+    logger.debug(character)
     character_id = dialog_manager.dialog_data.get("character_id", 0)
     character = await api_client.get_character(character_id)
     logger.debug(character)
@@ -47,11 +60,13 @@ async def on_change_level(
     callback: CallbackQuery, button: Button, manager: DialogManager
 ):
     await manager.switch_to(campaign_states.ManageCharacters.change_level)
+    await manager.switch_to(campaign_states.ManageCharacters.change_level)
 
 
 async def on_change_rating(
     callback: CallbackQuery, button: Button, manager: DialogManager
 ):
+    await manager.switch_to(campaign_states.ManageCharacters.change_rating)
     await manager.switch_to(campaign_states.ManageCharacters.change_rating)
 
 
@@ -59,18 +74,25 @@ async def on_view_inventory(
     callback: CallbackQuery, button: Button, manager: DialogManager
 ):
     await manager.switch_to(campaign_states.ManageInventory.view_inventory)
+    await manager.switch_to(campaign_states.ManageInventory.view_inventory)
 
 
 async def on_download_jpeg(
     callback: CallbackQuery, button: Button, manager: DialogManager
 ):
     character_id = manager.dialog_data.get("character_id", 0)
+    character_id = manager.dialog_data.get("character_id", 0)
     try:
+        character = await api_client.get_character(character_id)
+        jpeg_data = character.get("data", "").bytes()  # type: ignore
+        filename = character.get("data", {}).get("name", character_id)  # type: ignore
         character = await api_client.get_character(character_id)
         jpeg_data = character.get("data", "").bytes()  # type: ignore
         filename = character.get("data", {}).get("name", character_id)  # type: ignore
         await callback.message.answer_document(  # type: ignore
             document=BufferedInputFile(
+                jpeg_data,
+                filename=f"{filename}.json",
                 jpeg_data,
                 filename=f"{filename}.json",
             )
@@ -84,6 +106,7 @@ async def on_change_rating_click(
 ):
     """Обработчик нажатия кнопки изменения рейтинга"""
     await manager.switch_to(campaign_states.ManageCharacters.change_rating)
+    await manager.switch_to(campaign_states.ManageCharacters.change_rating)
 
 
 async def on_quick_rating_change(
@@ -93,6 +116,9 @@ async def on_quick_rating_change(
     try:
         character_id = manager.dialog_data.get("character_id", 0)
         current_character = await api_client.get_character(character_id)
+        current_rating = current_character.get("data", {}).get(  # type: ignore
+            "rating", 0
+        )
         current_rating = current_character.get("data", {}).get(  # type: ignore
             "rating", 0
         )
@@ -109,8 +135,14 @@ async def on_quick_rating_change(
         await api_client.update_character(
             character_id, {"rating": new_rating}  # type: ignore
         )
+        await api_client.update_character(
+            character_id, {"rating": new_rating}  # type: ignore
+        )
 
         # Показываем обновленные данные
+        await manager.show(
+            campaign_states.ManageCharacters.character_menu  # type: ignore
+        )
         await manager.show(
             campaign_states.ManageCharacters.character_menu  # type: ignore
         )
@@ -140,8 +172,12 @@ async def on_rating_input(
         await api_client.update_character(
             character_id, {"rating": rating}  # type: ignore
         )
+        await api_client.update_character(
+            character_id, {"rating": rating}  # type: ignore
+        )
 
         await message.answer(f"✅ Рейтинг успешно изменен на {rating}")
+        await manager.switch_to(campaign_states.ManageCharacters.character_menu)
         await manager.switch_to(campaign_states.ManageCharacters.character_menu)
 
     except ValueError:
@@ -188,9 +224,48 @@ character_window = Window(
 )
 
 
+# Диалог для изменения уровня
+async def on_level_input(
+    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+):
+    try:
+        level = int(text)
+        character_id = manager.dialog_data.get("character_id", 0)
+        await api_client.update_character(character_id, {"level": level})  # type: ignore
+        await message.answer(f"✅ Уровень изменен на {level}")
+        await manager.back()
+    except ValueError:
+        await message.answer("❌ Введите целое число")
+    except Exception:
+        await message.answer("❌ Ошибка при обновлении уровня")
+
+
+# === Окна ===
+
+# Окно выбора персонажа
+character_window = Window(
+    Const("🧙 Выберите персонажа:"),
+    Group(
+        Select(
+            Format("{item[data][name]} (Ур. {item[data][level]})"),
+            id="character_select",
+            item_id_getter=lambda x: x.get("id"),
+            items="characters",
+            on_click=on_character_selected,
+        ),
+        width=1,
+    ),
+    Cancel(Const("⬅️ Назад")),
+    state=campaign_states.ManageCharacters.character_selection,
+    getter=get_characters,
+)
+
+
 # окно для изменения рейтинга
 rating_window = Window(
     Multi(
+        Format("🏆 Изменение рейтинга для {character[data][name]}"),
+        Format("Текущий рейтинг: {character[data][rating]}"),
         Format("🏆 Изменение рейтинга для {character[data][name]}"),
         Format("Текущий рейтинг: {character[data][rating]}"),
         Const(""),
@@ -207,7 +282,11 @@ rating_window = Window(
         on_click=lambda c, b, m: m.switch_to(
             campaign_states.ManageCharacters.character_menu
         ),
+        on_click=lambda c, b, m: m.switch_to(
+            campaign_states.ManageCharacters.character_menu
+        ),
     ),
+    state=campaign_states.ManageCharacters.change_rating,
     state=campaign_states.ManageCharacters.change_rating,
     getter=get_character_data,  # Используем существующий геттер
 )
@@ -216,6 +295,8 @@ rating_window = Window(
 quick_rating_window = Window(
     Multi(
         Format("🏆 Быстрое изменение рейтинга"),
+        Format("Персонаж: {character[data][name]}"),
+        Format("Текущий рейтинг: {character[data][rating]}"),
         Format("Персонаж: {character[data][name]}"),
         Format("Текущий рейтинг: {character[data][rating]}"),
         Const(""),
@@ -269,7 +350,11 @@ quick_rating_window = Window(
         on_click=lambda c, b, m: m.switch_to(
             campaign_states.ManageCharacters.character_menu
         ),
+        on_click=lambda c, b, m: m.switch_to(
+            campaign_states.ManageCharacters.character_menu
+        ),
     ),
+    state=campaign_states.ManageCharacters.quick_rating,
     state=campaign_states.ManageCharacters.quick_rating,
     getter=get_character_data,
 )
@@ -283,10 +368,14 @@ level_window = Window(
     ),
     Back(Const("⬅️ Назад")),
     state=campaign_states.ManageCharacters.change_level,
+    state=campaign_states.ManageCharacters.change_level,
 )
 
 character_menu_window = Window(
     Multi(
+        Format("🧙 Персонаж: {character[data][name]}"),
+        Format("⭐ Уровень: {character[data][level]}"),
+        Format("🏆 Рейтинг: {character[data][rating]}"),
         Format("🧙 Персонаж: {character[data][name]}"),
         Format("⭐ Уровень: {character[data][level]}"),
         Format("🏆 Рейтинг: {character[data][rating]}"),
@@ -300,6 +389,9 @@ character_menu_window = Window(
             on_click=lambda c, b, m: m.switch_to(
                 campaign_states.ManageCharacters.quick_rating
             ),
+            on_click=lambda c, b, m: m.switch_to(
+                campaign_states.ManageCharacters.quick_rating
+            ),
         ),
     ),
     Row(
@@ -307,11 +399,13 @@ character_menu_window = Window(
         Button(Const("📥 Скачать JPEG"), id="download_jpeg", on_click=on_download_jpeg),
     ),
     Back(Const("⬅️ Назад")),
-    # Cancel(Const("❌ Выход")),
+    Cancel(Const("❌ Выход")),
     state=campaign_states.ManageCharacters.character_menu,
     getter=get_character_data,
 )
 
+# === Создание диалога и роутера ===
+dialog = Dialog(
 # === Создание диалога и роутера ===
 dialog = Dialog(
     character_window,
@@ -320,6 +414,9 @@ dialog = Dialog(
     rating_window,
     quick_rating_window,
 )
+
+router = Router()
+router.include_router(dialog)
 
 router = Router()
 router.include_router(dialog)
