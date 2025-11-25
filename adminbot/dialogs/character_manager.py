@@ -7,8 +7,10 @@ from aiogram_dialog.widgets.text import Const, Format, Multi
 from aiogram_dialog.widgets.input import TextInput, ManagedTextInput
 from aiogram.types import Message, CallbackQuery
 from functools import partial
+import json
 
 from services.api_client import api_client
+from services.models import GetCharacterResponse, CharacterOut
 from . import states as campaign_states
 
 logger = logging.getLogger(__name__)
@@ -16,24 +18,16 @@ logger = logging.getLogger(__name__)
 
 # === Геттеры ===
 async def get_characters(dialog_manager: DialogManager, **kwargs):
-    selected_campaign = dialog_manager.start_data.get(  # type: ignore
-        "selected_campaign", {}
-    )
-    # logger.debug(selected_campaign)
-    dialog_manager.dialog_data["selected_campaign"] = selected_campaign
-    company_id = selected_campaign.get("id", 0)
-    characters = await api_client.get_campaign_characters(company_id)
-    logger.debug(characters)
-    selected_campaign = dialog_manager.start_data.get(  # type: ignore
-        "selected_campaign", {}
-    )
+    selected_campaign = dialog_manager.start_data.get("selected_campaign", {})
+    campaign_id = selected_campaign.get("id", 0)
+    characters = await api_client.get_campaign_characters(campaign_id)
+
     return {"characters": characters}
 
 
 async def get_character_data(dialog_manager: DialogManager, **kwargs):
     character_id = dialog_manager.dialog_data.get("character_id", 0)
     character = await api_client.get_character(character_id)
-    logger.debug(character)
     return {"character": character}
 
 
@@ -48,7 +42,6 @@ async def on_character_selected(
     await manager.next()
 
 
-# Обработчики для меню персонажа
 async def on_change_level(
     callback: CallbackQuery, button: Button, manager: DialogManager
 ):
@@ -73,22 +66,26 @@ async def on_download_jpeg(
     character_id = manager.dialog_data.get("character_id", 0)
     try:
         character = await api_client.get_character(character_id)
-        jpeg_data = character.get("data", "").bytes()  # type: ignore
-        filename = character.get("data", {}).get("name", character_id)  # type: ignore
-        await callback.message.answer_document(  # type: ignore
-            document=BufferedInputFile(
-                jpeg_data,
-                filename=f"{filename}.json",
+        if character:
+            # Создаем JSON файл с данными персонажа
+            character_data = character.dict()
+            json_str = json.dumps(character_data, ensure_ascii=False, indent=2)
+            json_bytes = json_str.encode("utf-8")
+
+            await callback.message.answer_document(
+                document=BufferedInputFile(
+                    json_bytes,
+                    filename=f"character_{character_id}.json",
+                )
             )
-        )
-    except Exception:
-        await callback.message.answer("❌ Ошибка при загрузке файла")  # type: ignore
+    except Exception as e:
+        logger.error(f"Error downloading character: {e}")
+        await callback.message.answer("❌ Ошибка при загрузке файла")
 
 
 async def on_change_rating_click(
     callback: CallbackQuery, button: Button, manager: DialogManager
 ):
-    """Обработчик нажатия кнопки изменения рейтинга"""
     await manager.switch_to(campaign_states.ManageCharacters.change_rating)
 
 
@@ -98,13 +95,14 @@ async def on_quick_rating_change(
     manager: DialogManager,
     item_id: str,
 ):
-    """Обработчик быстрого изменения рейтинга (+/- 1, 5, 10)"""
     try:
         character_id = manager.dialog_data.get("character_id", 0)
         current_character = await api_client.get_character(character_id)
-        current_rating = current_character.get("data", {}).get(  # type: ignore
-            "rating", 0
-        )
+        if not current_character:
+            await callback.answer("❌ Персонаж не найден")
+            return
+
+        current_rating = current_character.data.get("rating", 0)
         change = int(item_id)
         new_rating = current_rating + change
 
@@ -115,13 +113,15 @@ async def on_quick_rating_change(
             new_rating = 1000
 
         # Обновление
-        await api_client.update_character(
+        result = await api_client.update_character(
             character_id,
-            {"rating": new_rating},  # type: ignore
+            {"rating": new_rating},
         )
 
-        # Показываем обновленные данные
-        await manager.show(campaign_states.ManageCharacters.character_menu)
+        if hasattr(result, "error"):
+            await callback.answer(f"❌ Ошибка: {result.error}")
+        else:
+            await manager.show(campaign_states.ManageCharacters.character_menu)
 
     except Exception as e:
         logger.error(f"Error in quick rating change: {e}")
@@ -134,7 +134,6 @@ async def on_rating_input(
     manager: DialogManager,
     text: str,
 ):
-    """Обработчик ввода нового рейтинга"""
     try:
         rating = int(text)
         character_id = manager.dialog_data.get("character_id")
@@ -143,20 +142,21 @@ async def on_rating_input(
         if rating < 0:
             await message.answer("❌ Рейтинг не может быть отрицательным")
             return
-        if rating > 1000:  # Пример ограничения
+        if rating > 1000:
             await message.answer("❌ Рейтинг не может превышать 1000")
             return
 
         # Обновляем рейтинг через API
-        await api_client.update_character(
+        result = await api_client.update_character(
             character_id,
-            {"rating": rating},  # type: ignore
+            {"rating": rating},
         )
 
-        await message.answer(f"✅ Рейтинг успешно изменен на {rating}")
-        await manager.switch_to(
-            campaign_states.ManageCharacters.character_menu
-        )
+        if hasattr(result, "error"):
+            await message.answer(f"❌ Ошибка: {result.error}")
+        else:
+            await message.answer(f"✅ Рейтинг успешно изменен на {rating}")
+            await manager.switch_to(campaign_states.ManageCharacters.character_menu)
 
     except ValueError:
         await message.answer("❌ Пожалуйста, введите целое число")
@@ -165,7 +165,6 @@ async def on_rating_input(
         await message.answer("❌ Ошибка при обновлении рейтинга")
 
 
-# Диалог для изменения уровня
 async def on_level_input(
     message: Message,
     widget: ManagedTextInput,
@@ -175,25 +174,28 @@ async def on_level_input(
     try:
         level = int(text)
         character_id = manager.dialog_data.get("character_id", 0)
-        await api_client.update_character(character_id, {"level": level})  # type: ignore
-        await message.answer(f"✅ Уровень изменен на {level}")
-        await manager.back()
+        result = await api_client.update_character(character_id, {"level": level})
+
+        if hasattr(result, "error"):
+            await message.answer(f"❌ Ошибка: {result.error}")
+        else:
+            await message.answer(f"✅ Уровень изменен на {level}")
+            await manager.back()
     except ValueError:
         await message.answer("❌ Введите целое число")
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error updating level: {e}")
         await message.answer("❌ Ошибка при обновлении уровня")
 
 
 # === Окна ===
-
-# Окно выбора персонажа
 character_window = Window(
     Const("🧙 Выберите персонажа:"),
     Group(
         Select(
-            Format("{item[data][name]} (Ур. {item[data][level]})"),
+            Format("{item.data[name]} (Ур. {item.data[level]})"),
             id="character_select",
-            item_id_getter=lambda x: x.get("id"),
+            item_id_getter=lambda x: str(x.id),
             items="characters",
             on_click=on_character_selected,
         ),
@@ -204,12 +206,10 @@ character_window = Window(
     getter=get_characters,
 )
 
-
-# окно для изменения рейтинга
 rating_window = Window(
     Multi(
-        Format("🏆 Изменение рейтинга для {character[data][name]}"),
-        Format("Текущий рейтинг: {character[data][rating]}"),
+        Format("🏆 Изменение рейтинга для {character.data[name]}"),
+        Format("Текущий рейтинг: {character.data[rating]}"),
         Const(""),
         Const("Введите новый рейтинг:"),
         sep="\n",
@@ -226,15 +226,14 @@ rating_window = Window(
         ),
     ),
     state=campaign_states.ManageCharacters.change_rating,
-    getter=get_character_data,  # Используем существующий геттер
+    getter=get_character_data,
 )
 
-# Окно быстрого изменения рейтинга
 quick_rating_window = Window(
     Multi(
         Format("🏆 Быстрое изменение рейтинга"),
-        Format("Персонаж: {character[data][name]}"),
-        Format("Текущий рейтинг: {character[data][rating]}"),
+        Format("Персонаж: {character.data[name]}"),
+        Format("Текущий рейтинг: {character.data[rating]}"),
         Const(""),
         Const("Выберите изменение:"),
         sep="\n",
@@ -291,7 +290,6 @@ quick_rating_window = Window(
     getter=get_character_data,
 )
 
-
 level_window = Window(
     Const("Введите новый уровень персонажа:"),
     TextInput(
@@ -304,15 +302,13 @@ level_window = Window(
 
 character_menu_window = Window(
     Multi(
-        Format("🧙 Персонаж: {character[data][name]}"),
-        Format("⭐ Уровень: {character[data][level]}"),
-        Format("🏆 Рейтинг: {character[data][rating]}"),
+        Format("🧙 Персонаж: {character.data[name]}"),
+        Format("⭐ Уровень: {character.data[level]}"),
+        Format("🏆 Рейтинг: {character.data[rating]}"),
         sep="\n",
     ),
     Row(
-        Button(
-            Const("📈 Уровень"), id="change_level", on_click=on_change_level
-        ),
+        Button(Const("📈 Уровень"), id="change_level", on_click=on_change_level),
         Button(
             Const("🏆 Рейтинг"),
             id="change_rating",
@@ -328,8 +324,8 @@ character_menu_window = Window(
             on_click=on_view_inventory,
         ),
         Button(
-            Const("📥 Скачать JPEG"),
-            id="download_jpeg",
+            Const("📥 Скачать JSON"),
+            id="download_json",
             on_click=on_download_jpeg,
         ),
     ),

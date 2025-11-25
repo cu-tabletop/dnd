@@ -5,20 +5,20 @@ from aiogram_dialog.widgets.text import Const, Format
 from aiogram_dialog.widgets.input import TextInput
 from aiogram.types import CallbackQuery, Message
 
+from services.models import CampaignModelSchema
 from . import states as campaign_states
 
 
 # === Гетеры ===
 async def get_campaign_edit_data(dialog_manager: DialogManager, **kwargs):
-    campaign = dialog_manager.start_data.get("selected_campaign", {})  # type: ignore
-    dialog_manager.dialog_data["selected_campaign"] = campaign
+    campaign_data = dialog_manager.start_data.get("selected_campaign", {})
+    campaign = CampaignModelSchema(**campaign_data)
+    dialog_manager.dialog_data["selected_campaign"] = campaign_data
     return {
-        "campaign_title": campaign.get("title", "Неизвестная группа"),
-        "campaign_description": campaign.get(
-            "description", "Описание отсутствует"
-        ),
-        "campaign_icon": campaign.get("icon", "🏰"),
-        "campaign_id": campaign.get("id", "N/A"),
+        "campaign_title": campaign.title,
+        "campaign_description": campaign.description or "Описание отсутствует",
+        "campaign_icon": campaign.icon or "🏰",
+        "campaign_id": campaign.id or "N/A",
     }
 
 
@@ -42,9 +42,7 @@ async def on_title_edited(
     text: str,
 ):
     if len(text) > 255:
-        await message.answer(
-            "Название слишком длинное (максимум 255 символов)"
-        )
+        await message.answer("Название слишком длинное (максимум 255 символов)")
         return
 
     if "selected_campaign" not in dialog_manager.dialog_data:
@@ -61,9 +59,7 @@ async def on_description_edited(
     text: str,
 ):
     if len(text) > 1023:
-        await message.answer(
-            "Описание слишком длинное (максимум 1023 символа)"
-        )
+        await message.answer("Описание слишком длинное (максимум 1023 символа)")
         return
 
     if "selected_campaign" not in dialog_manager.dialog_data:
@@ -84,7 +80,7 @@ async def on_icon_selected_edit(
         "moon_edit": "🌙",
         "star_edit": "⭐",
     }
-    icon = icon_map.get(button.widget_id, "🏰")  # type: ignore
+    icon = icon_map.get(button.widget_id, "🏰")
 
     if "selected_campaign" not in dialog_manager.dialog_data:
         dialog_manager.dialog_data["selected_campaign"] = {}
@@ -96,9 +92,10 @@ async def on_icon_selected_edit(
 async def on_edit_confirm(
     callback: CallbackQuery, button: Button, dialog_manager: DialogManager
 ):
-    campaign = dialog_manager.dialog_data.get("selected_campaign", {})
-    await callback.answer(  # type: ignore
-        f"✅ Изменения для {campaign.get('title')} сохранены!", show_alert=True
+    campaign_data = dialog_manager.dialog_data.get("selected_campaign", {})
+    campaign = CampaignModelSchema(**campaign_data)
+    await callback.answer(
+        f"✅ Изменения для {campaign.title} сохранены!", show_alert=True
     )
     await dialog_manager.back()
 
@@ -110,17 +107,13 @@ select_field_window = Window(
         "Выберите что хотите изменить:"
     ),
     Column(
-        Button(
-            Const("📝 Название группы"), id="title", on_click=on_field_selected
-        ),
+        Button(Const("📝 Название группы"), id="title", on_click=on_field_selected),
         Button(
             Const("📄 Описание группы"),
             id="description",
             on_click=on_field_selected,
         ),
-        Button(
-            Const("🎨 Иконка группы"), id="icon", on_click=on_field_selected
-        ),
+        Button(Const("🎨 Иконка группы"), id="icon", on_click=on_field_selected),
     ),
     Cancel(Const("⬅️ Назад")),
     state=campaign_states.EditCampaignInfo.select_field,
@@ -129,7 +122,7 @@ select_field_window = Window(
 
 edit_title_window = Window(
     Const("Введите новое название группы:"),
-    TextInput(id="edit_title_input", on_success=on_title_edited),  # type: ignore
+    TextInput(id="edit_title_input", on_success=on_title_edited),
     SwitchTo(
         Const("⬅️ Назад"),
         id="back_from_title",
@@ -142,7 +135,7 @@ edit_description_window = Window(
     Const("Введите новое описание группы:"),
     TextInput(
         id="edit_description_input",
-        on_success=on_description_edited,  # type: ignore
+        on_success=on_description_edited,
     ),
     SwitchTo(
         Const("⬅️ Назад"),
@@ -155,26 +148,16 @@ edit_description_window = Window(
 edit_icon_window = Window(
     Const("Выберите новую иконку для группы:"),
     Group(
-        Button(
-            Const("🏰 Замок"), id="castle_edit", on_click=on_icon_selected_edit
-        ),
-        Button(
-            Const("📚 Книги"), id="books_edit", on_click=on_icon_selected_edit
-        ),
+        Button(Const("🏰 Замок"), id="castle_edit", on_click=on_icon_selected_edit),
+        Button(Const("📚 Книги"), id="books_edit", on_click=on_icon_selected_edit),
         Button(
             Const("⚡ Молния"),
             id="lightning_edit",
             on_click=on_icon_selected_edit,
         ),
-        Button(
-            Const("🔥 Огонь"), id="fire_edit", on_click=on_icon_selected_edit
-        ),
-        Button(
-            Const("🌙 Луна"), id="moon_edit", on_click=on_icon_selected_edit
-        ),
-        Button(
-            Const("⭐ Звезда"), id="star_edit", on_click=on_icon_selected_edit
-        ),
+        Button(Const("🔥 Огонь"), id="fire_edit", on_click=on_icon_selected_edit),
+        Button(Const("🌙 Луна"), id="moon_edit", on_click=on_icon_selected_edit),
+        Button(Const("⭐ Звезда"), id="star_edit", on_click=on_icon_selected_edit),
         width=2,
     ),
     SwitchTo(

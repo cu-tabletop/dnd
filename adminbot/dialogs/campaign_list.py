@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # === Гетеры ===
 async def get_campaigns_data(dialog_manager: DialogManager, **kwargs):
-    user_id = dialog_manager.start_data.get("user_id")  # type: ignore
+    user_id = dialog_manager.start_data.get("user_id")
     page = dialog_manager.dialog_data.get("page", 0)
     campaigns_per_page = 5
 
@@ -33,9 +33,7 @@ async def get_campaigns_data(dialog_manager: DialogManager, **kwargs):
     end_idx = start_idx + campaigns_per_page
     current_campaigns = campaigns[start_idx:end_idx]
 
-    total_pages = (
-        len(campaigns) + campaigns_per_page - 1
-    ) // campaigns_per_page
+    total_pages = (len(campaigns) + campaigns_per_page - 1) // campaigns_per_page
 
     return {
         "campaigns": current_campaigns,
@@ -51,26 +49,23 @@ async def get_campaigns_data(dialog_manager: DialogManager, **kwargs):
 async def on_campaign_selected(
     callback: CallbackQuery, button: Button, dialog_manager: SubManager
 ):
-    dialog_manager.dialog_data["selected_campaign_id"] = dialog_manager.item_id
-    logger.info(f"Selected campaign ID: {dialog_manager.item_id}")
+    campaign_id = dialog_manager.item_id
+    logger.info(f"Selected campaign ID: {campaign_id}")
 
     campaigns_data = await get_campaigns_data(dialog_manager)
     selected_campaign = next(
-        (
-            camp
-            for camp in campaigns_data["campaigns"]
-            if str(camp.get("id")) == dialog_manager.item_id
-        ),
+        (camp for camp in campaigns_data["campaigns"] if str(camp.id) == campaign_id),
         None,
     )
-    # logger.info(f"Selected campaign data: {selected_campaign}")
 
     if selected_campaign:
-        dialog_manager.dialog_data["selected_campaign"] = selected_campaign
+        dialog_manager.dialog_data["selected_campaign"] = selected_campaign.dict()
 
     await dialog_manager.start(
         campaign_states.CampaignManage.main,
-        data={"selected_campaign": selected_campaign},
+        data={
+            "selected_campaign": selected_campaign.dict() if selected_campaign else None
+        },
     )
 
 
@@ -98,20 +93,18 @@ campaign_list_window = Window(
     ),
     ListGroup(
         Button(
-            Format("{item[icon]} {item[title]}"),
+            Format("{item.icon} {item.title}"),
             id="campaign",
-            on_click=on_campaign_selected,  # type: ignore
+            on_click=on_campaign_selected,
         ),
         id="campaigns_group",
-        item_id_getter=lambda item: item["id"],
+        item_id_getter=lambda item: str(item.id),
         items="campaigns",
         when="has_campaigns",
     ),
     Const(
         "У вас пока нет учебных групп",
-        when=lambda data, widget, manager: not data.get(
-            "has_campaigns", False
-        ),
+        when=lambda data, widget, manager: not data.get("has_campaigns", False),
     ),
     Group(
         Row(

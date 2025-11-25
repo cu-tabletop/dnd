@@ -1,12 +1,48 @@
 import aiohttp
 import logging
-from typing import Optional, Dict, Any, List
-import random
 import asyncio
+import random
 from datetime import datetime
+from typing import Optional, List, Union
 from settings import settings
 
+from .models import (
+    PingResponse,
+    GetCharacterResponse,
+    UploadCharacterResponse,
+    CreateCampaignResponse,
+    GetCampaignsResponse,
+    AddToCampaignResponse,
+    EditPermissionsResponse,
+    ErrorResponse,
+    CharacterOut,
+    CampaignModelSchema,
+    UploadCharacter,
+    CreateCampaignRequest,
+    AddToCampaignRequest,
+    CampaignEditPermissions,
+    CampaignPermissions,
+)
+
 logger = logging.getLogger(__name__)
+
+
+class ApiError(Exception):
+    """Базовое исключение для ошибок API"""
+
+    pass
+
+
+class ValidationError(ApiError):
+    pass
+
+
+class NotFoundError(ApiError):
+    pass
+
+
+class ForbiddenError(ApiError):
+    pass
 
 
 class MockDnDApiClient:
@@ -14,30 +50,30 @@ class MockDnDApiClient:
 
     def __init__(self):
         self.campaigns = [
-            {
-                "id": 1,
-                "title": "Грифондор",
-                "description": "Факультет храбрости и благородства",
-                "icon": "🦁",
-                "verified": True,
-                "private": False,
-            },
-            {
-                "id": 2,
-                "title": "Слизерин",
-                "description": "Факультет амбициозных и хитрых",
-                "icon": "🐍",
-                "verified": True,
-                "private": False,
-            },
+            CampaignModelSchema(
+                id=1,
+                title="Грифондор",
+                description="Факультет храбрости и благородства",
+                icon="🦁",
+                verified=True,
+                private=False,
+            ),
+            CampaignModelSchema(
+                id=2,
+                title="Слизерин",
+                description="Факультет амбициозных и хитрых",
+                icon="🐍",
+                verified=True,
+                private=False,
+            ),
         ]
         self.characters = [
-            {
-                "id": 1,
-                "owner_id": 123,
-                "owner_telegram_id": 123,
-                "campaign_id": 1,
-                "data": {
+            CharacterOut(
+                id=1,
+                owner_id=123,
+                owner_telegram_id=123,
+                campaign_id=1,
+                data={
                     "name": "Элриндор",
                     "level": 5,
                     "rating": -1,
@@ -50,13 +86,13 @@ class MockDnDApiClient:
                     "status": "активен",
                     "last_activity": "2024-01-15",
                 },
-            },
-            {
-                "id": 2,
-                "owner_id": 124,
-                "owner_telegram_id": 124,
-                "campaign_id": 1,
-                "data": {
+            ),
+            CharacterOut(
+                id=2,
+                owner_id=124,
+                owner_telegram_id=124,
+                campaign_id=1,
+                data={
                     "name": "Торгрим",
                     "level": 4,
                     "rating": 10,
@@ -69,7 +105,7 @@ class MockDnDApiClient:
                     "status": "активен",
                     "last_activity": "2024-01-14",
                 },
-            },
+            ),
         ]
         self.next_campaign_id = 3
         self.next_character_id = 3
@@ -77,89 +113,79 @@ class MockDnDApiClient:
 
     async def _simulate_delay(self):
         """Имитация задержки сети"""
-        await asyncio.sleep(random.uniform(0.1, 0.5))
+        await asyncio.sleep(random.uniform(0.1, settings.STUB_DELAY))
 
     # === PING ===
-    async def ping(self) -> Dict[str, Any]:
+    async def ping(self) -> PingResponse:
         await self._simulate_delay()
-        return {"message": "pong"}
+        return PingResponse(message="pong")
 
     # === CHARACTER ENDPOINTS ===
-    async def get_character(self, char_id: int) -> Optional[Dict[str, Any]]:
+    async def get_character(self, char_id: int) -> Optional[GetCharacterResponse]:
         await self._simulate_delay()
         for character in self.characters:
-            if character["id"] == char_id:
-                return character
+            if character.id == char_id:
+                return GetCharacterResponse(**character.dict())
         return None
 
     async def upload_character(
-        self, owner_id: int, campaign_id: int, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, owner_id: int, campaign_id: int, data: dict
+    ) -> Union[UploadCharacterResponse, ErrorResponse]:
         await self._simulate_delay()
 
         # Проверяем существование кампании
-        campaign_exists = any(
-            campaign["id"] == campaign_id for campaign in self.campaigns
-        )
+        campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
         if not campaign_exists:
-            return {"error": "Кампания не найдена"}
+            return ErrorResponse(error="Кампания не найдена")
 
-        new_character = {
-            "id": self.next_character_id,
-            "owner_id": owner_id,
-            "owner_telegram_id": owner_id,
-            "campaign_id": campaign_id,
-            "data": data,
-        }
+        new_character = CharacterOut(
+            id=self.next_character_id,
+            owner_id=owner_id,
+            owner_telegram_id=owner_id,
+            campaign_id=campaign_id,
+            data=data,
+        )
 
         self.characters.append(new_character)
         self.next_character_id += 1
 
-        return new_character
+        return UploadCharacterResponse(**new_character.dict())
 
     async def get_campaign_characters(
         self, campaign_id: int
-    ) -> List[Dict[str, Any]]:
+    ) -> List[GetCharacterResponse]:
         await self._simulate_delay()
         return [
-            char
+            GetCharacterResponse(**char.dict())
             for char in self.characters
-            if char["campaign_id"] == campaign_id
+            if char.campaign_id == campaign_id
         ]
 
     async def update_character(
-        self, char_id: int, update_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, char_id: int, update_data: dict
+    ) -> Union[GetCharacterResponse, ErrorResponse]:
         await self._simulate_delay()
 
         for character in self.characters:
-            if character["id"] == char_id:
+            if character.id == char_id:
                 # Обновляем данные персонажа
-                if "data" in update_data:
-                    character["data"].update(update_data["data"])
-                else:
-                    character["data"].update(update_data)
-
-                character["data"]["last_activity"] = datetime.now().strftime(
+                character.data.update(update_data)
+                character.data["last_activity"] = datetime.now().strftime(
                     "%Y-%m-%d %H:%M"
                 )
-                return {
-                    "message": f"Персонаж {char_id} обновлен",
-                    "character": character,
-                }
 
-        return {"error": "Персонаж не найден"}
+                return GetCharacterResponse(**character.dict())
+
+        return ErrorResponse(error="Персонаж не найден")
 
     # === CAMPAIGN ENDPOINTS ===
     async def get_campaigns(
         self, user_id: Optional[int] = None, campaign_id: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[CampaignModelSchema]:
         await self._simulate_delay()
 
         if campaign_id:
-            return [
-                camp for camp in self.campaigns if camp["id"] == campaign_id
-            ]
+            return [camp for camp in self.campaigns if camp.id == campaign_id]
 
         # В моках возвращаем все кампании для любого пользователя
         return self.campaigns
@@ -170,54 +196,46 @@ class MockDnDApiClient:
         title: str,
         description: Optional[str] = None,
         icon: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> Union[CreateCampaignResponse, ErrorResponse]:
         await self._simulate_delay()
 
-        new_campaign = {
-            "id": self.next_campaign_id,
-            "title": title,
-            "description": description or "Описание отсутствует",
-            "icon": icon or "🏰",
-            "verified": False,
-            "private": False,
-        }
+        new_campaign = CampaignModelSchema(
+            id=self.next_campaign_id,
+            title=title,
+            description=description or "Описание отсутствует",
+            icon=icon or "🏰",
+            verified=False,
+            private=False,
+        )
 
         self.campaigns.append(new_campaign)
         self.next_campaign_id += 1
 
-        return {"message": f"Кампания '{title}' создана успешно"}
+        return CreateCampaignResponse(message=f"Кампания '{title}' создана успешно")
 
     async def add_to_campaign(
         self, campaign_id: int, owner_id: int, user_id: int
-    ) -> Dict[str, Any]:
+    ) -> Union[AddToCampaignResponse, ErrorResponse]:
         await self._simulate_delay()
 
         # Проверяем существование кампании
-        campaign_exists = any(
-            campaign["id"] == campaign_id for campaign in self.campaigns
-        )
+        campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
         if not campaign_exists:
-            return {"error": "Кампания не найдена"}
+            return ErrorResponse(error="Кампания не найдена")
 
-        # Проверяем, что owner_id является владельцем кампании
-        # В моках считаем, что все могут добавлять
-
-        # В реальной реализации здесь была бы логика добавления пользователя в кампанию
-        return {
-            "message": f"Пользователь {user_id} добавлен в кампанию {campaign_id}"
-        }
+        return AddToCampaignResponse(
+            message=f"Пользователь {user_id} добавлен в кампанию {campaign_id}"
+        )
 
     async def edit_permissions(
-        self, campaign_id: int, owner_id: int, user_id: int, status: int
-    ) -> Dict[str, Any]:
+        self, campaign_id: int, owner_id: int, user_id: int, status: CampaignPermissions
+    ) -> Union[EditPermissionsResponse, ErrorResponse]:
         await self._simulate_delay()
 
         # Проверяем существование кампании
-        campaign_exists = any(
-            campaign["id"] == campaign_id for campaign in self.campaigns
-        )
+        campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
         if not campaign_exists:
-            return {"error": "Кампания не найдена"}
+            return ErrorResponse(error="Кампания не найдена")
 
         # Сохраняем права доступа
         if campaign_id not in self.campaign_permissions:
@@ -225,10 +243,9 @@ class MockDnDApiClient:
         self.campaign_permissions[campaign_id][user_id] = status
 
         status_names = {0: "Участник", 1: "Мастер", 2: "Владелец"}
-        return {
-            "message": f"Права пользователя {user_id} изменены на: "
-            f"{status_names.get(status, 'Неизвестно')}"
-        }
+        return EditPermissionsResponse(
+            message=f"Права пользователя {user_id} изменены на: {status_names.get(status.value, 'Неизвестно')}"
+        )
 
 
 class RealDnDApiClient:
@@ -239,107 +256,97 @@ class RealDnDApiClient:
 
     async def _make_request(
         self, method: str, endpoint: str, **kwargs
-    ) -> Dict[str, Any]:
+    ) -> Union[dict, list]:
         """Универсальный метод для выполнения HTTP запросов"""
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.request(
                     method, f"{self.base_url}{endpoint}", **kwargs
                 ) as response:
+
                     if response.status in [200, 201]:
                         return await response.json()
                     elif response.status == 400:
                         error_data = await response.json()
-                        return {"error": f"Ошибка валидации: {error_data}"}
+                        raise ValidationError(f"Ошибка валидации: {error_data}")
                     elif response.status == 403:
-                        return {"error": "Доступ запрещен"}
+                        raise ForbiddenError("Доступ запрещен")
                     elif response.status == 404:
-                        return {"error": "Объект не найден"}
+                        raise NotFoundError("Объект не найден")
                     else:
                         error_text = await response.text()
-                        logger.error(
-                            f"API error {response.status}: {error_text}"
-                        )
-                        return {"error": f"Ошибка API: {response.status}"}
+                        logger.error(f"API error {response.status}: {error_text}")
+                        raise ApiError(f"Ошибка API: {response.status}")
 
         except aiohttp.ClientError as e:
             logger.error(f"Network error: {e}")
-            return {"error": f"Ошибка сети: {str(e)}"}
+            raise ApiError(f"Ошибка сети: {str(e)}")
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            return {"error": f"Неожиданная ошибка: {str(e)}"}
+            raise ApiError(f"Неожиданная ошибка: {str(e)}")
 
     # === PING ===
-    async def ping(self) -> Dict[str, Any]:
-        return await self._make_request("GET", "/api/ping/")
+    async def ping(self) -> PingResponse:
+        result = await self._make_request("GET", "/api/ping/")
+        return PingResponse(**result)
 
     # === CHARACTER ENDPOINTS ===
-    async def get_character(self, char_id: int) -> Optional[Dict[str, Any]]:
+    async def get_character(self, char_id: int) -> Optional[GetCharacterResponse]:
         result = await self._make_request(
             "GET", "/api/character/get/", params={"char_id": char_id}
         )
-        return result if "error" not in result else None
+        return GetCharacterResponse(**result) if result else None
 
     async def upload_character(
-        self, owner_id: int, campaign_id: int, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        payload = {
-            "owner_id": owner_id,
-            "campaign_id": campaign_id,
-            "data": data,
-        }
-        return await self._make_request(
-            "POST", "/api/character/post/", json=payload
+        self, owner_id: int, campaign_id: int, data: dict
+    ) -> UploadCharacterResponse:
+        payload = UploadCharacter(
+            owner_id=owner_id,
+            campaign_id=campaign_id,
+            data=data,
         )
+        result = await self._make_request(
+            "POST", "/api/character/post/", json=payload.dict()
+        )
+        return UploadCharacterResponse(**result)
 
     async def get_campaign_characters(
         self, campaign_id: int
-    ) -> List[Dict[str, Any]]:
+    ) -> List[GetCharacterResponse]:
         """Получить всех персонажей кампании"""
-        # В текущем API нет прямого метода для этого, поэтому получаем по одному
-        # В реальном приложении лучше добавить отдельный эндпоинт
-        characters = []
-
+        # В текущем API нет прямого метода для этого
         # Это временное решение - в реальном API должен быть эндпоинт
         # для получения персонажей кампании
-        # Пока возвращаем пустой список
         logger.warning(
             "get_campaign_characters: Этот метод требует отдельного эндпоинта на бэкенде"
         )
-        return characters
+        return []
 
     async def update_character(
-        self, char_id: int, update_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, char_id: int, update_data: dict
+    ) -> GetCharacterResponse:
         """Обновить персонажа"""
         # В текущем API нет метода обновления персонажа
-        logger.warning(
-            "update_character: Этот метод требует реализации на бэкенде"
-        )
-        return {"error": "Метод обновления персонажа не реализован на сервере"}
+        logger.warning("update_character: Этот метод требует реализации на бэкенде")
+        raise ApiError("Метод обновления персонажа не реализован на сервере")
 
     # === CAMPAIGN ENDPOINTS ===
     async def get_campaigns(
         self, user_id: Optional[int] = None, campaign_id: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[CampaignModelSchema]:
         params = {}
         if user_id is not None:
             params["user_id"] = user_id
         if campaign_id is not None:
             params["campaign_id"] = campaign_id
 
-        result = await self._make_request(
-            "GET", "/api/campaign/get/", params=params
-        )
-
-        if "error" in result:
-            return []
+        result = await self._make_request("GET", "/api/campaign/get/", params=params)
 
         # API может вернуть один объект или массив
         if isinstance(result, list):
-            return result
+            return [CampaignModelSchema(**item) for item in result]
         else:
-            return [result]
+            return [CampaignModelSchema(**result)]
 
     async def create_campaign(
         self,
@@ -347,46 +354,48 @@ class RealDnDApiClient:
         title: str,
         description: Optional[str] = None,
         icon: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        payload = {"telegram_id": telegram_id, "title": title}
-
-        if description is not None:
-            payload["description"] = description
-        if icon is not None:
-            payload["icon"] = icon
-
-        return await self._make_request(
-            "POST", "/api/campaign/create/", json=payload
+    ) -> CreateCampaignResponse:
+        payload = CreateCampaignRequest(
+            telegram_id=telegram_id,
+            title=title,
+            description=description,
+            icon=icon,
         )
+        result = await self._make_request(
+            "POST", "/api/campaign/create/", json=payload.dict()
+        )
+        return CreateCampaignResponse(**result)
 
     async def add_to_campaign(
         self, campaign_id: int, owner_id: int, user_id: int
-    ) -> Dict[str, Any]:
-        payload = {
-            "campaign_id": campaign_id,
-            "owner_id": owner_id,
-            "user_id": user_id,
-        }
-        return await self._make_request(
-            "POST", "/api/campaign/add/", json=payload
+    ) -> AddToCampaignResponse:
+        payload = AddToCampaignRequest(
+            campaign_id=campaign_id,
+            owner_id=owner_id,
+            user_id=user_id,
         )
+        result = await self._make_request(
+            "POST", "/api/campaign/add/", json=payload.dict()
+        )
+        return AddToCampaignResponse(**result)
 
     async def edit_permissions(
-        self, campaign_id: int, owner_id: int, user_id: int, status: int
-    ) -> Dict[str, Any]:
-        payload = {
-            "campaign_id": campaign_id,
-            "owner_id": owner_id,
-            "user_id": user_id,
-            "status": status,
-        }
-        return await self._make_request(
-            "POST", "/api/campaign/edit-permissions/", json=payload
+        self, campaign_id: int, owner_id: int, user_id: int, status: CampaignPermissions
+    ) -> EditPermissionsResponse:
+        payload = CampaignEditPermissions(
+            campaign_id=campaign_id,
+            owner_id=owner_id,
+            user_id=user_id,
+            status=status,
         )
+        result = await self._make_request(
+            "POST", "/api/campaign/edit-permissions/", json=payload.dict()
+        )
+        return EditPermissionsResponse(**result)
 
 
 # Глобальная переменная для переключения режима
-USE_MOCK_API = True  # По умолчанию используем моки
+USE_MOCK_API = settings.USE_API_STUBS
 
 
 def get_api_client():
@@ -394,7 +403,7 @@ def get_api_client():
     if USE_MOCK_API:
         return MockDnDApiClient()
     else:
-        return RealDnDApiClient(settings.BACKEND_URL)  # Замените на ваш URL
+        return RealDnDApiClient(settings.BACKEND_URL)
 
 
 # Глобальный экземпляр клиента

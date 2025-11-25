@@ -14,14 +14,9 @@ async def cmd_start(message: Message, dialog_manager: DialogManager):
     mode = "мок-данные" if USE_MOCK_API else "реальное API"
 
     welcome_text = (
-        f"Приветствую вас, Мастер {user.first_name}!\n\n"  # type: ignore
+        f"Приветствую вас, Мастер {user.first_name}!\n\n"
         "Я ваш верный помощник в организации настольных ролевых игр.\n"
         f"📊 Режим работы: {mode}\n\n"
-        # "С моей помощью вы сможете:\n"
-        # "• Создавать и управлять игровыми кампаниями\n"
-        # "• Контролировать персонажей игроков\n"
-        # "• Настраивать права доступа для участников\n"
-        # "• Хранить всю информацию о вашем мире\n\n"
         "Давайте начнем наше приключение!"
     )
 
@@ -30,7 +25,7 @@ async def cmd_start(message: Message, dialog_manager: DialogManager):
     await dialog_manager.start(
         state=campaign_states.CampaignManagerMain.main,
         mode=StartMode.RESET_STACK,
-        data={"user_id": user.id},  # type: ignore
+        data={"user_id": user.id},
     )
 
 
@@ -40,9 +35,7 @@ async def cmd_mock(message: Message):
     global USE_MOCK_API, api_client
     USE_MOCK_API = True
     api_client = get_api_client()
-    await message.answer(
-        "✅ Режим мок-API активирован. Используются тестовые данные."
-    )
+    await message.answer("✅ Режим мок-API активирован. Используются тестовые данные.")
 
 
 @router.message(Command("real"))
@@ -56,7 +49,7 @@ async def cmd_real(message: Message):
     try:
         result = await api_client.ping()
         await message.answer(
-            f"✅ Режим реального API активирован. Ping: {result.get('message', 'OK')}"
+            f"✅ Режим реального API активирован. Ping: {result.message}"
         )
     except Exception as e:
         await message.answer(f"❌ Не удалось подключиться к API: {str(e)}")
@@ -70,7 +63,7 @@ async def cmd_status(message: Message):
     # Тестируем соединение
     try:
         ping_result = await api_client.ping()
-        status = f"✅ Соединение: {ping_result.get('message', 'OK')}"
+        status = f"✅ Соединение: {ping_result.message}"
     except Exception as e:
         status = f"❌ Ошибка соединения: {str(e)}"
 
