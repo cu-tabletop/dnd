@@ -28,7 +28,9 @@ async def get_character_inventory(dialog_manager: DialogManager, **kwargs):
     character_id = dialog_manager.start_data.get("character_id")
     dialog_manager.dialog_data["character_id"] = character_id
     inventory = await api_client.get_character_inventory(character_id)
-    logger.info(f"Получение инвентаря для персонажа {character_id}: {inventory}")
+    logger.info(
+        f"Получение инвентаря для персонажа {character_id}: {inventory}"
+    )
     return {"inventory": inventory, "character_id": character_id}
 
 
@@ -50,11 +52,16 @@ async def get_inventory_item_data(dialog_manager: DialogManager, **kwargs):
 
 
 async def on_inventory_item_selected(
-    callback: CallbackQuery, widget: Select, manager: DialogManager, item_id: str
+    callback: CallbackQuery,
+    widget: Select,
+    manager: DialogManager,
+    item_id: str,
 ):
     """Обработчик выбора предмета из инвентаря"""
     manager.dialog_data["selected_item_id"] = int(item_id)
-    await manager.switch_to(campaign_states.ManageInventory.edit_inventory_item)
+    await manager.switch_to(
+        campaign_states.ManageInventory.edit_inventory_item
+    )
 
 
 # ========== ОБРАБОТЧИКИ ДОБАВЛЕНИЯ ПРЕДМЕТА ==========
@@ -68,7 +75,10 @@ async def on_add_inventory_item(
 
 
 async def on_item_name_input(
-    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+    message: Message,
+    widget: ManagedTextInput,
+    manager: DialogManager,
+    text: str,
 ):
     """Обработчик ввода названия предмета"""
     if not text.strip():
@@ -86,7 +96,10 @@ async def on_item_name_input(
 
 
 async def on_item_description_input(
-    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+    message: Message,
+    widget: ManagedTextInput,
+    manager: DialogManager,
+    text: str,
 ):
     """Обработчик ввода описания предмета"""
     description = text.strip() if text.strip() != "-" else ""
@@ -95,17 +108,24 @@ async def on_item_description_input(
         f"📝 Описание: {description if description else 'не указано'}\nТеперь введите "
         "количество (или отправьте '1' по умолчанию):"
     )
-    await manager.switch_to(campaign_states.ManageInventory.add_inventory_item_quantity)
+    await manager.switch_to(
+        campaign_states.ManageInventory.add_inventory_item_quantity
+    )
 
 
 async def on_item_quantity_input(
-    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+    message: Message,
+    widget: ManagedTextInput,
+    manager: DialogManager,
+    text: str,
 ):
     """Обработчик ввода количества предмета"""
     try:
         quantity = int(text) if text.strip() else 1
         if quantity <= 0:
-            await message.answer("❌ Количество должно быть положительным числом")
+            await message.answer(
+                "❌ Количество должно быть положительным числом"
+            )
             return
         if quantity > 1000:
             await message.answer("❌ Количество не может превышать 1000")
@@ -127,7 +147,9 @@ async def on_item_quantity_input(
         if hasattr(result, "error"):
             await message.answer(f"❌ Ошибка: {result.error}")
         else:
-            await message.answer(f"✅ Предмет '{result.name}' успешно добавлен!")
+            await message.answer(
+                f"✅ Предмет '{result.name}' успешно добавлен!"
+            )
         await manager.switch_to(campaign_states.ManageInventory.view_inventory)
     except Exception as e:
         logger.error(f"Error adding inventory item: {e}")
@@ -139,7 +161,10 @@ async def on_item_quantity_input(
 
 
 async def on_edit_item_name(
-    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+    message: Message,
+    widget: ManagedTextInput,
+    manager: DialogManager,
+    text: str,
 ):
     """Обработчик изменения названия предмета"""
     if not text.strip():
@@ -163,7 +188,10 @@ async def on_edit_item_name(
 
 
 async def on_edit_item_description(
-    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+    message: Message,
+    widget: ManagedTextInput,
+    manager: DialogManager,
+    text: str,
 ):
     """Обработчик изменения описания предмета"""
     description = text.strip() if text.strip() != "-" else ""
@@ -184,13 +212,18 @@ async def on_edit_item_description(
 
 
 async def on_edit_item_quantity(
-    message: Message, widget: ManagedTextInput, manager: DialogManager, text: str
+    message: Message,
+    widget: ManagedTextInput,
+    manager: DialogManager,
+    text: str,
 ):
     """Обработчик изменения количества предмета"""
     try:
         quantity = int(text)
         if quantity <= 0:
-            await message.answer("❌ Количество должно быть положительным числом")
+            await message.answer(
+                "❌ Количество должно быть положительным числом"
+            )
             return
         if quantity > 1000:
             await message.answer("❌ Количество не может превышать 1000")
@@ -224,13 +257,17 @@ async def on_delete_inventory_item(
     try:
         result = await api_client.delete_inventory_item(item_id)
         if hasattr(result, "error"):
-            await callback.answer(f"❌ Ошибка: {result.error}", show_alert=True)
+            await callback.answer(
+                f"❌ Ошибка: {result.error}", show_alert=True
+            )
         else:
             await callback.answer("✅ Предмет удален", show_alert=True)
         await manager.switch_to(campaign_states.ManageInventory.view_inventory)
     except Exception as e:
         logger.error(f"Error deleting inventory item: {e}")
-        await callback.answer("❌ Ошибка при удалении предмета", show_alert=True)
+        await callback.answer(
+            "❌ Ошибка при удалении предмета", show_alert=True
+        )
         await manager.switch_to(campaign_states.ManageInventory.view_inventory)
 
 
@@ -258,7 +295,9 @@ view_inventory_window = Window(
     ),
     Row(
         Button(
-            Const("➕ Добавить предмет"), id="add_item", on_click=on_add_inventory_item
+            Const("➕ Добавить предмет"),
+            id="add_item",
+            on_click=on_add_inventory_item,
         ),
         Cancel(Const("⬅️ Назад")),
     ),
@@ -332,7 +371,11 @@ edit_inventory_item_window = Window(
                 campaign_states.ManageInventory.edit_inventory_item_quantity
             ),
         ),
-        Button(Const("🗑️ Удалить"), id="delete_item", on_click=on_delete_inventory_item),
+        Button(
+            Const("🗑️ Удалить"),
+            id="delete_item",
+            on_click=on_delete_inventory_item,
+        ),
     ),
     Back(Const("⬅️ Назад")),
     state=campaign_states.ManageInventory.edit_inventory_item,

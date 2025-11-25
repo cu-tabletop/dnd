@@ -72,7 +72,9 @@ async def get_permissions_data(dialog_manager: DialogManager, **kwargs):
         "campaign_title": campaign.title,
         "campaign_id": campaign.id,
         "total_users": len(mock_users),
-        "active_users": len([u for u in mock_users if u["status"] == "активен"]),
+        "active_users": len(
+            [u for u in mock_users if u["status"] == "активен"]
+        ),
     }
 
 
@@ -129,7 +131,9 @@ async def on_user_selected(
 ):
     """Обработчик выбора пользователя для изменения прав"""
     dialog_manager.dialog_data["selected_user_id"] = dialog_manager.item_id
-    await dialog_manager.switch_to(campaign_states.EditPermissions.select_permission)
+    await dialog_manager.switch_to(
+        campaign_states.EditPermissions.select_permission
+    )
 
 
 async def on_permission_level_selected(
@@ -199,8 +203,12 @@ async def on_invite_user(
         if hasattr(result, "error"):
             await message.answer(f"❌ Ошибка при приглашении: {result.error}")
         else:
-            await message.answer(f"✅ Пользователь @{username} приглашен в кампанию!")
-            await dialog_manager.switch_to(campaign_states.EditPermissions.main)
+            await message.answer(
+                f"✅ Пользователь @{username} приглашен в кампанию!"
+            )
+            await dialog_manager.switch_to(
+                campaign_states.EditPermissions.main
+            )
 
     except Exception as e:
         logger.error(f"Error inviting user: {e}")
@@ -214,7 +222,9 @@ async def on_remove_user(
     selected_user_id = dialog_manager.dialog_data.get("selected_user_id")
 
     if not selected_user_id:
-        await callback.answer("❌ Сначала выберите пользователя", show_alert=True)
+        await callback.answer(
+            "❌ Сначала выберите пользователя", show_alert=True
+        )
         return
 
     # Получаем данные о пользователе
@@ -250,7 +260,9 @@ async def on_remove_user(
                 f"✅ Пользователь {selected_user['name']} удален из группы",
                 show_alert=True,
             )
-            await dialog_manager.switch_to(campaign_states.EditPermissions.main)
+            await dialog_manager.switch_to(
+                campaign_states.EditPermissions.main
+            )
 
 
 # === ОКНА ===
@@ -301,7 +313,9 @@ select_permission_window = Window(
         item_id_getter=lambda item: str(item["level"].value),
         items="permission_levels",
     ),
-    Button(Const("🚫 Удалить мастера"), id="remove_user", on_click=on_remove_user),
+    Button(
+        Const("🚫 Удалить мастера"), id="remove_user", on_click=on_remove_user
+    ),
     SwitchTo(
         Const("⬅️ Назад к списку"),
         id="back",

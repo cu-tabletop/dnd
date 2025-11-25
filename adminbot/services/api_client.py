@@ -156,11 +156,15 @@ class MockDnDApiClient:
         return PingResponse(message="pong")
 
     # === CHARACTER ENDPOINTS ===
-    async def get_character(self, char_id: int) -> Optional[GetCharacterResponse]:
+    async def get_character(
+        self, char_id: int
+    ) -> Optional[GetCharacterResponse]:
         await self._simulate_delay()
         for character in self.characters:
             if character.id == char_id:
-                return GetCharacterResponse.model_validate(character.model_dump())
+                return GetCharacterResponse.model_validate(
+                    character.model_dump()
+                )
         return None
 
     async def upload_character(
@@ -168,7 +172,9 @@ class MockDnDApiClient:
     ) -> Union[UploadCharacterResponse, ErrorResponse]:
         await self._simulate_delay()
 
-        campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
+        campaign_exists = any(
+            campaign.id == campaign_id for campaign in self.campaigns
+        )
         if not campaign_exists:
             return ErrorResponse(error="Кампания не найдена")
 
@@ -183,7 +189,9 @@ class MockDnDApiClient:
         self.characters.append(new_character)
         self.next_character_id += 1
 
-        return UploadCharacterResponse.model_validate(new_character.model_dump())
+        return UploadCharacterResponse.model_validate(
+            new_character.model_dump()
+        )
 
     async def get_campaign_characters(
         self, campaign_id: int
@@ -206,16 +214,22 @@ class MockDnDApiClient:
                 character.data["last_activity"] = datetime.now().strftime(
                     "%Y-%m-%d %H:%M"
                 )
-                return GetCharacterResponse.model_validate(character.model_dump())
+                return GetCharacterResponse.model_validate(
+                    character.model_dump()
+                )
 
         return ErrorResponse(error="Персонаж не найден")
 
     # === INVENTORY ENDPOINTS ===
-    async def get_character_inventory(self, character_id: int) -> List[InventoryItem]:
+    async def get_character_inventory(
+        self, character_id: int
+    ) -> List[InventoryItem]:
         """Получить инвентарь персонажа"""
         await self._simulate_delay()
         return [
-            item for item in self.inventory_items if item.character_id == character_id
+            item
+            for item in self.inventory_items
+            if item.character_id == character_id
         ]
 
     async def add_inventory_item(
@@ -225,7 +239,9 @@ class MockDnDApiClient:
         await self._simulate_delay()
 
         # Проверяем существование персонажа
-        character_exists = any(char.id == character_id for char in self.characters)
+        character_exists = any(
+            char.id == character_id for char in self.characters
+        )
         if not character_exists:
             return ErrorResponse(error="Персонаж не найден")
 
@@ -307,14 +323,18 @@ class MockDnDApiClient:
         self.campaigns.append(new_campaign)
         self.next_campaign_id += 1
 
-        return CreateCampaignResponse(message=f"Кампания '{title}' создана успешно")
+        return CreateCampaignResponse(
+            message=f"Кампания '{title}' создана успешно"
+        )
 
     async def add_to_campaign(
         self, campaign_id: int, owner_id: int, user_id: int
     ) -> Union[AddToCampaignResponse, ErrorResponse]:
         await self._simulate_delay()
 
-        campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
+        campaign_exists = any(
+            campaign.id == campaign_id for campaign in self.campaigns
+        )
         if not campaign_exists:
             return ErrorResponse(error="Кампания не найдена")
 
@@ -323,11 +343,17 @@ class MockDnDApiClient:
         )
 
     async def edit_permissions(
-        self, campaign_id: int, owner_id: int, user_id: int, status: CampaignPermissions
+        self,
+        campaign_id: int,
+        owner_id: int,
+        user_id: int,
+        status: CampaignPermissions,
     ) -> Union[EditPermissionsResponse, ErrorResponse]:
         await self._simulate_delay()
 
-        campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
+        campaign_exists = any(
+            campaign.id == campaign_id for campaign in self.campaigns
+        )
         if not campaign_exists:
             return ErrorResponse(error="Кампания не найдена")
 
@@ -356,19 +382,22 @@ class RealDnDApiClient:
                 async with session.request(
                     method, f"{self.base_url}{endpoint}", **kwargs
                 ) as response:
-
                     if response.status in [200, 201]:
                         return await response.json()
                     elif response.status == 400:
                         error_data = await response.json()
-                        raise ValidationError(f"Ошибка валидации: {error_data}")
+                        raise ValidationError(
+                            f"Ошибка валидации: {error_data}"
+                        )
                     elif response.status == 403:
                         raise ForbiddenError("Доступ запрещен")
                     elif response.status == 404:
                         raise NotFoundError("Объект не найден")
                     else:
                         error_text = await response.text()
-                        logger.error(f"API error {response.status}: {error_text}")
+                        logger.error(
+                            f"API error {response.status}: {error_text}"
+                        )
                         raise ApiError(f"Ошибка API: {response.status}")
 
         except aiohttp.ClientError as e:
@@ -384,7 +413,9 @@ class RealDnDApiClient:
         return PingResponse(**result)
 
     # === CHARACTER ENDPOINTS ===
-    async def get_character(self, char_id: int) -> Optional[GetCharacterResponse]:
+    async def get_character(
+        self, char_id: int
+    ) -> Optional[GetCharacterResponse]:
         result = await self._make_request(
             "GET", "/api/character/get/", params={"char_id": char_id}
         )
@@ -416,11 +447,15 @@ class RealDnDApiClient:
         self, char_id: int, update_data: dict
     ) -> GetCharacterResponse:
         """Обновить персонажа"""
-        logger.warning("update_character: Этот метод требует реализации на бэкенде")
+        logger.warning(
+            "update_character: Этот метод требует реализации на бэкенде"
+        )
         raise ApiError("Метод обновления персонажа не реализован на сервере")
 
     # === INVENTORY ENDPOINTS ===
-    async def get_character_inventory(self, character_id: int) -> List[InventoryItem]:
+    async def get_character_inventory(
+        self, character_id: int
+    ) -> List[InventoryItem]:
         """Получить инвентарь персонажа"""
         logger.warning(
             "get_character_inventory: Этот метод требует реализации на бэкенде"
@@ -431,8 +466,12 @@ class RealDnDApiClient:
         self, character_id: int, item: InventoryItemCreate
     ) -> AddInventoryItemResponse:
         """Добавить предмет в инвентарь"""
-        logger.warning("add_inventory_item: Этот метод требует реализации на бэкенде")
-        raise ApiError("Метод добавления предмета в инвентарь не реализован на сервере")
+        logger.warning(
+            "add_inventory_item: Этот метод требует реализации на бэкенде"
+        )
+        raise ApiError(
+            "Метод добавления предмета в инвентарь не реализован на сервере"
+        )
 
     async def update_inventory_item(
         self, item_id: int, update_data: InventoryItemUpdate
@@ -441,14 +480,20 @@ class RealDnDApiClient:
         logger.warning(
             "update_inventory_item: Этот метод требует реализации на бэкенде"
         )
-        raise ApiError("Метод обновления предмета в инвентаре не реализован на сервере")
+        raise ApiError(
+            "Метод обновления предмета в инвентаре не реализован на сервере"
+        )
 
-    async def delete_inventory_item(self, item_id: int) -> DeleteInventoryItemResponse:
+    async def delete_inventory_item(
+        self, item_id: int
+    ) -> DeleteInventoryItemResponse:
         """Удалить предмет из инвентаря"""
         logger.warning(
             "delete_inventory_item: Этот метод требует реализации на бэкенде"
         )
-        raise ApiError("Метод удаления предмета из инвентаря не реализован на сервере")
+        raise ApiError(
+            "Метод удаления предмета из инвентаря не реализован на сервере"
+        )
 
     # === CAMPAIGN ENDPOINTS ===
     async def get_campaigns(
@@ -460,7 +505,9 @@ class RealDnDApiClient:
         if campaign_id is not None:
             params["campaign_id"] = campaign_id
 
-        result = await self._make_request("GET", "/api/campaign/get/", params=params)
+        result = await self._make_request(
+            "GET", "/api/campaign/get/", params=params
+        )
 
         # Создаем временный объект для парсинга ответа
         temp_response = GetCampaignsResponse(result)
@@ -503,7 +550,11 @@ class RealDnDApiClient:
         return AddToCampaignResponse(**result)
 
     async def edit_permissions(
-        self, campaign_id: int, owner_id: int, user_id: int, status: CampaignPermissions
+        self,
+        campaign_id: int,
+        owner_id: int,
+        user_id: int,
+        status: CampaignPermissions,
     ) -> EditPermissionsResponse:
         payload = CampaignEditPermissions(
             campaign_id=campaign_id,
@@ -512,7 +563,9 @@ class RealDnDApiClient:
             status=status,
         )
         result = await self._make_request(
-            "POST", "/api/campaign/edit-permissions/", json=payload.model_dump()
+            "POST",
+            "/api/campaign/edit-permissions/",
+            json=payload.model_dump(),
         )
         return EditPermissionsResponse(**result)
 

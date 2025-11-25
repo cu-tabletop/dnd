@@ -35,7 +35,9 @@ async def cmd_mock(message: Message):
     global USE_MOCK_API, api_client
     USE_MOCK_API = True
     api_client = get_api_client()
-    await message.answer("✅ Режим мок-API активирован. Используются тестовые данные.")
+    await message.answer(
+        "✅ Режим мок-API активирован. Используются тестовые данные."
+    )
 
 
 @router.message(Command("real"))

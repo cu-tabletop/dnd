@@ -25,12 +25,16 @@ async def get_confirm_data(dialog_manager: DialogManager, **kwargs):
 
     # Готовим текст статуса иконки заранее
     icon_status = (
-        "загружена" if dialog_manager.dialog_data.get("icon") else "не установлена"
+        "загружена"
+        if dialog_manager.dialog_data.get("icon")
+        else "не установлена"
     )
 
     return {
         "title": dialog_manager.dialog_data.get("title", ""),
-        "description": dialog_manager.dialog_data.get("description", "не указано"),
+        "description": dialog_manager.dialog_data.get(
+            "description", "не указано"
+        ),
         "icon_status": icon_status,
     }
 
@@ -108,14 +112,18 @@ async def on_confirm(
         )
 
         if hasattr(result, "error"):
-            await callback.answer(f"❌ Ошибка: {result.error}", show_alert=True)
+            await callback.answer(
+                f"❌ Ошибка: {result.error}", show_alert=True
+            )
         else:
             await callback.answer(f"✅ {result.message}", show_alert=True)
             await dialog_manager.done()
 
     except Exception as e:
         logger.error(f"Error creating campaign: {e}")
-        await callback.answer("❌ Ошибка при создании кампании", show_alert=True)
+        await callback.answer(
+            "❌ Ошибка при создании кампании", show_alert=True
+        )
 
 
 async def on_cancel(

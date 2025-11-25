@@ -46,7 +46,9 @@ async def on_title_edited(
     text: str,
 ):
     if len(text) > 255:
-        await message.answer("Название слишком длинное (максимум 255 символов)")
+        await message.answer(
+            "Название слишком длинное (максимум 255 символов)"
+        )
         return
 
     if "selected_campaign" not in dialog_manager.dialog_data:
@@ -63,7 +65,9 @@ async def on_description_edited(
     text: str,
 ):
     if len(text) > 1023:
-        await message.answer("Описание слишком длинное (максимум 1023 символа)")
+        await message.answer(
+            "Описание слишком длинное (максимум 1023 символа)"
+        )
         return
 
     if "selected_campaign" not in dialog_manager.dialog_data:
@@ -92,13 +96,17 @@ select_field_window = Window(
         Const("Выберите что хотите изменить:"),
     ),
     Column(
-        Button(Const("📝 Название группы"), id="title", on_click=on_field_selected),
+        Button(
+            Const("📝 Название группы"), id="title", on_click=on_field_selected
+        ),
         Button(
             Const("📄 Описание группы"),
             id="description",
             on_click=on_field_selected,
         ),
-        Button(Const("🎨 Иконка группы"), id="icon", on_click=on_field_selected),
+        Button(
+            Const("🎨 Иконка группы"), id="icon", on_click=on_field_selected
+        ),
     ),
     Cancel(Const("⬅️ Назад")),
     state=campaign_states.EditCampaignInfo.select_field,

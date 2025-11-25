@@ -159,7 +159,9 @@ async def on_rating_input(
             await message.answer(f"❌ Ошибка: {result.error}")
         else:
             await message.answer(f"✅ Рейтинг успешно изменен на {rating}")
-            await manager.switch_to(campaign_states.ManageCharacters.character_menu)
+            await manager.switch_to(
+                campaign_states.ManageCharacters.character_menu
+            )
 
     except ValueError:
         await message.answer("❌ Пожалуйста, введите целое число")
@@ -177,7 +179,9 @@ async def on_level_input(
     try:
         level = int(text)
         character_id = manager.dialog_data.get("character_id", 0)
-        result = await api_client.update_character(character_id, {"level": level})
+        result = await api_client.update_character(
+            character_id, {"level": level}
+        )
 
         if hasattr(result, "error"):
             await message.answer(f"❌ Ошибка: {result.error}")
@@ -311,7 +315,9 @@ character_menu_window = Window(
         sep="\n",
     ),
     Row(
-        Button(Const("📈 Уровень"), id="change_level", on_click=on_change_level),
+        Button(
+            Const("📈 Уровень"), id="change_level", on_click=on_change_level
+        ),
         Button(
             Const("🏆 Рейтинг"),
             id="change_rating",
