@@ -1,7 +1,7 @@
 import logging
 from aiogram import Router
 from aiogram_dialog import Dialog, Window, DialogManager, SubManager
-from aiogram_dialog.widgets.kbd import Button, Group, Row, ListGroup
+from aiogram_dialog.widgets.kbd import Button, Group, Row, ListGroup, Select
 from aiogram_dialog.widgets.text import Const, Format, Multi
 from aiogram.types import CallbackQuery
 
@@ -47,25 +47,23 @@ async def get_campaigns_data(dialog_manager: DialogManager, **kwargs):
 
 # === Кнопки ===
 async def on_campaign_selected(
-    callback: CallbackQuery, button: Button, dialog_manager: SubManager
+    callback: CallbackQuery, button: Button, manager: SubManager
 ):
-    campaign_id = dialog_manager.item_id
+    campaign_id = manager.item_id
     logger.info(f"Selected campaign ID: {campaign_id}")
 
-    campaigns_data = await get_campaigns_data(dialog_manager)
+    campaigns_data = await get_campaigns_data(manager)
     selected_campaign = next(
         (camp for camp in campaigns_data["campaigns"] if str(camp.id) == campaign_id),
         None,
     )
 
     if selected_campaign:
-        dialog_manager.dialog_data["selected_campaign"] = selected_campaign.dict()
+        manager.dialog_data["selected_campaign"] = selected_campaign.model_dump()
 
-    await dialog_manager.start(
+    await manager.start(
         campaign_states.CampaignManage.main,
-        data={
-            "selected_campaign": selected_campaign.dict() if selected_campaign else None
-        },
+        data={"selected_campaign": selected_campaign.model_dump()},
     )
 
 
@@ -93,13 +91,13 @@ campaign_list_window = Window(
     ),
     ListGroup(
         Button(
-            Format("{item.icon} {item.title}"),
+            Format("🖼 {item.title}"),
             id="campaign",
             on_click=on_campaign_selected,
         ),
-        id="campaigns_group",
         item_id_getter=lambda item: str(item.id),
         items="campaigns",
+        id="campaigns_group",
         when="has_campaigns",
     ),
     Const(

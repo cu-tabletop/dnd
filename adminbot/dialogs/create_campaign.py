@@ -1,14 +1,15 @@
 import json
 import logging
+import base64
+import tempfile
+import os
 
 from aiogram import Router
 from aiogram.enums import ContentType
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, BufferedInputFile
 from aiogram_dialog import Dialog, Window, DialogManager
-from aiogram_dialog.api.entities import MediaAttachment, MediaId
 from aiogram_dialog.widgets.input import TextInput, MessageInput
 from aiogram_dialog.widgets.kbd import Button, Back, Cancel, Row
-from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Const, Format, Multi
 
 from services.api_client import api_client
@@ -22,18 +23,15 @@ logger = logging.getLogger(__name__)
 async def get_confirm_data(dialog_manager: DialogManager, **kwargs):
     logger.debug(dialog_manager.dialog_data)
 
-    icon = None
-    if icon_json := dialog_manager.dialog_data.get("icon_json", ""):
-        icon_data = json.loads(icon_json)
-        icon = MediaAttachment(
-            type=ContentType.PHOTO,
-            file_id=MediaId(icon_data["file_id"]),
-        )
+    # Готовим текст статуса иконки заранее
+    icon_status = (
+        "загружена" if dialog_manager.dialog_data.get("icon") else "не установлена"
+    )
 
     return {
         "title": dialog_manager.dialog_data.get("title", ""),
         "description": dialog_manager.dialog_data.get("description", "не указано"),
-        "icon": icon,
+        "icon_status": icon_status,
     }
 
 
@@ -62,11 +60,24 @@ async def on_icon_entered(
     message: Message, widget: MessageInput, dialog_manager: DialogManager
 ):
     if message.photo:
-        dialog_manager.dialog_data["icon_json"] = message.photo[-1].model_dump_json()
-    else:
-        dialog_manager.dialog_data["icon_json"] = "DEFAULT_ICON"
+        try:
+            # Берем фото максимального качества
+            photo = message.photo[-1]
 
-    await dialog_manager.next()
+            # Скачиваем фото
+            file = await message.bot.get_file(photo.file_id)
+            photo_bytes = await message.bot.download_file(file.file_path)
+
+            # Конвертируем в base64
+            icon_base64 = base64.b64encode(photo_bytes.read()).decode("utf-8")
+            dialog_manager.dialog_data["icon"] = icon_base64
+
+            await dialog_manager.next()
+        except Exception as e:
+            logger.error(f"Error processing photo: {e}")
+            await message.answer("❌ Ошибка при обработке изображения")
+    else:
+        await message.answer("❌ Пожалуйста, отправьте изображение")
 
 
 async def on_skip_description(
@@ -79,7 +90,7 @@ async def on_skip_description(
 async def on_skip_icon(
     callback: CallbackQuery, button: Button, dialog_manager: DialogManager
 ):
-    dialog_manager.dialog_data["icon"] = "DEFAULT_ICON"
+    dialog_manager.dialog_data["icon"] = None
     await dialog_manager.next()
 
 
@@ -154,9 +165,10 @@ description_window = Window(
 
 icon_window = Window(
     Multi(
-        Const("🎨 Выберите иконку для вашей группы:\n"),
+        Const("🎨 Загрузите иконку для вашей группы:\n"),
         Format("Название: {title}\n"),
-        Format("Описание: {description}"),
+        Format("Описание: {description}\n\n"),
+        Const("Отправьте изображение как фото (не файлом)"),
     ),
     MessageInput(func=on_icon_entered, content_types=ContentType.PHOTO),
     Row(
@@ -169,12 +181,14 @@ icon_window = Window(
 )
 
 confirm_window = Window(
-    DynamicMedia("icon"),
     Multi(
         Const("✅ Проверьте данные новой учебной группы:\n\n"),
         Format("📝 Название: {title}"),
-        Format("📄 Описание: {description}\n"),
+        Format("📄 Описание: {description}"),
+        Format("🖼 Иконка: {icon_status}"),
+        Const(""),
         Const("Всё верно?"),
+        sep="\n",
     ),
     Button(
         Const("✅ Создать группу"),

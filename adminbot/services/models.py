@@ -1,6 +1,7 @@
 from pydantic import BaseModel
-from typing import Any, Union
+from typing import Optional, Union, List
 from enum import IntEnum
+from pydantic import RootModel
 
 
 class Message(BaseModel):
@@ -8,7 +9,7 @@ class Message(BaseModel):
 
 
 class ValidationError(BaseModel):
-    message: Union[str, dict[str, Any], list[Any]] = "Ошибка в данных запроса."
+    message: Union[str, dict, list] = "Ошибка в данных запроса."
 
 
 class NotFoundError(BaseModel):
@@ -24,27 +25,27 @@ class CharacterOut(BaseModel):
     owner_id: int
     owner_telegram_id: int
     campaign_id: int
-    data: dict[str, Any]
+    data: dict
 
 
 class UploadCharacter(BaseModel):
     owner_id: int
     campaign_id: int
-    data: dict[str, Any]
+    data: dict
 
 
 class CreateCampaignRequest(BaseModel):
     telegram_id: int
     title: str
-    icon: str | None = None
-    description: str | None = None
+    icon: Optional[str] = None  # base64 строка
+    description: Optional[str] = None
 
 
 class CampaignModelSchema(BaseModel):
-    id: int | None = None
+    id: Optional[int] = None
     title: str
-    description: str | None = ""
-    icon: str | None = None
+    description: Optional[str] = ""
+    icon: Optional[str] = None  # base64 строка
     verified: bool = False
     private: bool = False
 
@@ -85,8 +86,9 @@ class CreateCampaignResponse(Message):
     pass
 
 
-class GetCampaignsResponse(BaseModel):
-    __root__: Union[CampaignModelSchema, list[CampaignModelSchema]]
+# Исправляем корневую модель для Pydantic v2
+class GetCampaignsResponse(RootModel):
+    root: Union[CampaignModelSchema, List[CampaignModelSchema]]
 
 
 class AddToCampaignResponse(Message):

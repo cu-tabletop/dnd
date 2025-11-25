@@ -1,7 +1,7 @@
 from aiogram import Router
 from aiogram_dialog import Dialog, Window, DialogManager
 from aiogram_dialog.widgets.kbd import Button, Group, Cancel, SwitchTo, Column
-from aiogram_dialog.widgets.text import Const, Format
+from aiogram_dialog.widgets.text import Const, Format, Multi
 from aiogram_dialog.widgets.input import TextInput
 from aiogram.types import CallbackQuery, Message
 
@@ -14,10 +14,14 @@ async def get_campaign_edit_data(dialog_manager: DialogManager, **kwargs):
     campaign_data = dialog_manager.start_data.get("selected_campaign", {})
     campaign = CampaignModelSchema(**campaign_data)
     dialog_manager.dialog_data["selected_campaign"] = campaign_data
+
+    # Готовим текст статуса иконки заранее
+    icon_status = "🖼 установлена" if campaign.icon else "❌ не установлена"
+
     return {
         "campaign_title": campaign.title,
         "campaign_description": campaign.description or "Описание отсутствует",
-        "campaign_icon": campaign.icon or "🏰",
+        "icon_status": icon_status,
         "campaign_id": campaign.id or "N/A",
     }
 
@@ -69,26 +73,6 @@ async def on_description_edited(
     await dialog_manager.switch_to(campaign_states.EditCampaignInfo.confirm)
 
 
-async def on_icon_selected_edit(
-    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
-):
-    icon_map = {
-        "castle_edit": "🏰",
-        "books_edit": "📚",
-        "lightning_edit": "⚡",
-        "fire_edit": "🔥",
-        "moon_edit": "🌙",
-        "star_edit": "⭐",
-    }
-    icon = icon_map.get(button.widget_id, "🏰")
-
-    if "selected_campaign" not in dialog_manager.dialog_data:
-        dialog_manager.dialog_data["selected_campaign"] = {}
-    dialog_manager.dialog_data["selected_campaign"]["icon"] = icon
-
-    await dialog_manager.switch_to(campaign_states.EditCampaignInfo.confirm)
-
-
 async def on_edit_confirm(
     callback: CallbackQuery, button: Button, dialog_manager: DialogManager
 ):
@@ -102,9 +86,10 @@ async def on_edit_confirm(
 
 # === Окна ===
 select_field_window = Window(
-    Format(
-        "✏️ Редактирование группы: {campaign_icon} {campaign_title}\n\n"
-        "Выберите что хотите изменить:"
+    Multi(
+        Format("✏️ Редактирование группы: {campaign_title}\n\n"),
+        Format("Иконка: {icon_status}\n\n"),
+        Const("Выберите что хотите изменить:"),
     ),
     Column(
         Button(Const("📝 Название группы"), id="title", on_click=on_field_selected),
@@ -146,19 +131,9 @@ edit_description_window = Window(
 )
 
 edit_icon_window = Window(
-    Const("Выберите новую иконку для группы:"),
-    Group(
-        Button(Const("🏰 Замок"), id="castle_edit", on_click=on_icon_selected_edit),
-        Button(Const("📚 Книги"), id="books_edit", on_click=on_icon_selected_edit),
-        Button(
-            Const("⚡ Молния"),
-            id="lightning_edit",
-            on_click=on_icon_selected_edit,
-        ),
-        Button(Const("🔥 Огонь"), id="fire_edit", on_click=on_icon_selected_edit),
-        Button(Const("🌙 Луна"), id="moon_edit", on_click=on_icon_selected_edit),
-        Button(Const("⭐ Звезда"), id="star_edit", on_click=on_icon_selected_edit),
-        width=2,
+    Const(
+        "Для изменения иконки группы создайте новую кампанию с нужной иконкой.\n\n"
+        "В будущих версиях здесь будет возможность загрузить новое изображение."
     ),
     SwitchTo(
         Const("⬅️ Назад"),
@@ -171,9 +146,9 @@ edit_icon_window = Window(
 confirm_edit_window = Window(
     Format(
         "✅ Проверьте изменения:\n\n"
-        "🎨 Иконка: {campaign_icon}\n"
         "📝 Название: {campaign_title}\n"
-        "📄 Описание: {campaign_description}\n\n"
+        "📄 Описание: {campaign_description}\n"
+        "🖼 Иконка: {icon_status}\n\n"
         "Сохранить изменения?"
     ),
     Button(Const("✅ Сохранить"), id="save_changes", on_click=on_edit_confirm),

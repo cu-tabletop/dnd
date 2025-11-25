@@ -4,8 +4,10 @@ import asyncio
 import random
 from datetime import datetime
 from typing import Optional, List, Union
-from settings import settings
 
+# import base64
+
+from settings import settings
 from .models import (
     PingResponse,
     GetCharacterResponse,
@@ -49,20 +51,23 @@ class MockDnDApiClient:
     """Заглушка API для тестирования с полной реализацией всех эндпоинтов"""
 
     def __init__(self):
+        # Создаем простые base64 иконки для моков
+        self.default_icon_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="  # 1x1 прозрачный пиксель
+
         self.campaigns = [
             CampaignModelSchema(
                 id=1,
-                title="Грифондор",
+                title="🦁 Грифондор",
                 description="Факультет храбрости и благородства",
-                icon="🦁",
+                icon=self.default_icon_base64,
                 verified=True,
                 private=False,
             ),
             CampaignModelSchema(
                 id=2,
-                title="Слизерин",
+                title="🐍 Слизерин",
                 description="Факультет амбициозных и хитрых",
-                icon="🐍",
+                icon=self.default_icon_base64,
                 verified=True,
                 private=False,
             ),
@@ -109,7 +114,7 @@ class MockDnDApiClient:
         ]
         self.next_campaign_id = 3
         self.next_character_id = 3
-        self.campaign_permissions = {}  # {campaign_id: {user_id: permission_level}}
+        self.campaign_permissions = {}
 
     async def _simulate_delay(self):
         """Имитация задержки сети"""
@@ -125,7 +130,7 @@ class MockDnDApiClient:
         await self._simulate_delay()
         for character in self.characters:
             if character.id == char_id:
-                return GetCharacterResponse(**character.dict())
+                return GetCharacterResponse.model_validate(character.model_dump())
         return None
 
     async def upload_character(
@@ -133,7 +138,6 @@ class MockDnDApiClient:
     ) -> Union[UploadCharacterResponse, ErrorResponse]:
         await self._simulate_delay()
 
-        # Проверяем существование кампании
         campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
         if not campaign_exists:
             return ErrorResponse(error="Кампания не найдена")
@@ -149,14 +153,14 @@ class MockDnDApiClient:
         self.characters.append(new_character)
         self.next_character_id += 1
 
-        return UploadCharacterResponse(**new_character.dict())
+        return UploadCharacterResponse.model_validate(new_character.model_dump())
 
     async def get_campaign_characters(
         self, campaign_id: int
     ) -> List[GetCharacterResponse]:
         await self._simulate_delay()
         return [
-            GetCharacterResponse(**char.dict())
+            GetCharacterResponse.model_validate(char.model_dump())
             for char in self.characters
             if char.campaign_id == campaign_id
         ]
@@ -168,13 +172,11 @@ class MockDnDApiClient:
 
         for character in self.characters:
             if character.id == char_id:
-                # Обновляем данные персонажа
                 character.data.update(update_data)
                 character.data["last_activity"] = datetime.now().strftime(
                     "%Y-%m-%d %H:%M"
                 )
-
-                return GetCharacterResponse(**character.dict())
+                return GetCharacterResponse.model_validate(character.model_dump())
 
         return ErrorResponse(error="Персонаж не найден")
 
@@ -187,7 +189,6 @@ class MockDnDApiClient:
         if campaign_id:
             return [camp for camp in self.campaigns if camp.id == campaign_id]
 
-        # В моках возвращаем все кампании для любого пользователя
         return self.campaigns
 
     async def create_campaign(
@@ -203,7 +204,7 @@ class MockDnDApiClient:
             id=self.next_campaign_id,
             title=title,
             description=description or "Описание отсутствует",
-            icon=icon or "🏰",
+            icon=icon or self.default_icon_base64,
             verified=False,
             private=False,
         )
@@ -218,7 +219,6 @@ class MockDnDApiClient:
     ) -> Union[AddToCampaignResponse, ErrorResponse]:
         await self._simulate_delay()
 
-        # Проверяем существование кампании
         campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
         if not campaign_exists:
             return ErrorResponse(error="Кампания не найдена")
@@ -232,12 +232,10 @@ class MockDnDApiClient:
     ) -> Union[EditPermissionsResponse, ErrorResponse]:
         await self._simulate_delay()
 
-        # Проверяем существование кампании
         campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
         if not campaign_exists:
             return ErrorResponse(error="Кампания не найдена")
 
-        # Сохраняем права доступа
         if campaign_id not in self.campaign_permissions:
             self.campaign_permissions[campaign_id] = {}
         self.campaign_permissions[campaign_id][user_id] = status
@@ -306,7 +304,7 @@ class RealDnDApiClient:
             data=data,
         )
         result = await self._make_request(
-            "POST", "/api/character/post/", json=payload.dict()
+            "POST", "/api/character/post/", json=payload.model_dump()
         )
         return UploadCharacterResponse(**result)
 
@@ -314,9 +312,6 @@ class RealDnDApiClient:
         self, campaign_id: int
     ) -> List[GetCharacterResponse]:
         """Получить всех персонажей кампании"""
-        # В текущем API нет прямого метода для этого
-        # Это временное решение - в реальном API должен быть эндпоинт
-        # для получения персонажей кампании
         logger.warning(
             "get_campaign_characters: Этот метод требует отдельного эндпоинта на бэкенде"
         )
@@ -326,7 +321,6 @@ class RealDnDApiClient:
         self, char_id: int, update_data: dict
     ) -> GetCharacterResponse:
         """Обновить персонажа"""
-        # В текущем API нет метода обновления персонажа
         logger.warning("update_character: Этот метод требует реализации на бэкенде")
         raise ApiError("Метод обновления персонажа не реализован на сервере")
 
@@ -342,11 +336,14 @@ class RealDnDApiClient:
 
         result = await self._make_request("GET", "/api/campaign/get/", params=params)
 
-        # API может вернуть один объект или массив
-        if isinstance(result, list):
-            return [CampaignModelSchema(**item) for item in result]
+        # Создаем временный объект для парсинга ответа
+        temp_response = GetCampaignsResponse(result)
+
+        # Извлекаем данные из корневой модели
+        if isinstance(temp_response.root, list):
+            return temp_response.root
         else:
-            return [CampaignModelSchema(**result)]
+            return [temp_response.root]
 
     async def create_campaign(
         self,
@@ -362,7 +359,7 @@ class RealDnDApiClient:
             icon=icon,
         )
         result = await self._make_request(
-            "POST", "/api/campaign/create/", json=payload.dict()
+            "POST", "/api/campaign/create/", json=payload.model_dump()
         )
         return CreateCampaignResponse(**result)
 
@@ -375,7 +372,7 @@ class RealDnDApiClient:
             user_id=user_id,
         )
         result = await self._make_request(
-            "POST", "/api/campaign/add/", json=payload.dict()
+            "POST", "/api/campaign/add/", json=payload.model_dump()
         )
         return AddToCampaignResponse(**result)
 
@@ -389,7 +386,7 @@ class RealDnDApiClient:
             status=status,
         )
         result = await self._make_request(
-            "POST", "/api/campaign/edit-permissions/", json=payload.dict()
+            "POST", "/api/campaign/edit-permissions/", json=payload.model_dump()
         )
         return EditPermissionsResponse(**result)
 

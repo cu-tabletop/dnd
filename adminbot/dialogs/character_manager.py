@@ -68,7 +68,7 @@ async def on_download_jpeg(
         character = await api_client.get_character(character_id)
         if character:
             # Создаем JSON файл с данными персонажа
-            character_data = character.dict()
+            character_data = character.model_dump()
             json_str = json.dumps(character_data, ensure_ascii=False, indent=2)
             json_bytes = json_str.encode("utf-8")
 
