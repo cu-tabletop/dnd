@@ -23,13 +23,17 @@ async def get_campaign_edit_data(dialog_manager: DialogManager, **kwargs):
     campaign_data = dialog_manager.start_data.get("selected_campaign", {})
     dialog_manager.dialog_data["selected_campaign"] = campaign_data
 
-    campaign_data.update(dialog_manager.dialog_data.get("new_selected_campaign", {}))
+    campaign_data.update(
+        dialog_manager.dialog_data.get("new_selected_campaign", {})
+    )
     dialog_manager.dialog_data["new_selected_campaign"] = campaign_data
     campaign = CampaignModelSchema(**campaign_data)
 
     icon = None
     if file_id := campaign.icon:
-        icon = MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(file_id))
+        icon = MediaAttachment(
+            type=ContentType.PHOTO, file_id=MediaId(file_id)
+        )
 
     return {
         "campaign_title": campaign.title,
@@ -95,16 +99,20 @@ async def on_icon_entered(
 
             logger.debug(f"Получено фото: {photo.file_id}")
             logger.debug(
-                f"Текущее состояние dialog_data: {dialog_manager.dialog_data["new_selected_campaign"]}"
+                f"Текущее состояние dialog_data: {dialog_manager.dialog_data['new_selected_campaign']}"
             )
 
-            dialog_manager.dialog_data["new_selected_campaign"]["icon"] = photo.file_id
+            dialog_manager.dialog_data["new_selected_campaign"]["icon"] = (
+                photo.file_id
+            )
 
             # dialog_manager.dialog_data["new_selected_campaign"].update(
             #     new_selected_campaign
             # )
 
-            await dialog_manager.switch_to(campaign_states.EditCampaignInfo.confirm)
+            await dialog_manager.switch_to(
+                campaign_states.EditCampaignInfo.confirm
+            )
         except Exception as e:
             logger.error(f"Error processing photo: {e}")
             await message.answer("❌ Ошибка при обработке изображения")
@@ -129,15 +137,21 @@ async def on_edit_confirm(
         )
 
         if hasattr(result, "error"):
-            await callback.answer(f"❌ Ошибка: {result.error}", show_alert=True)
+            await callback.answer(
+                f"❌ Ошибка: {result.error}", show_alert=True
+            )
         else:
             await callback.answer(f"✅ {result.message}", show_alert=True)
             campaign_data_old.update(campaign_data)
-            await dialog_manager.done(result={"update_data": campaign_data_old.copy()})
+            await dialog_manager.done(
+                result={"update_data": campaign_data_old.copy()}
+            )
 
     except Exception as e:
         logger.error(f"Error creating campaign: {e}")
-        await callback.answer("❌ Ошибка при создании кампании", show_alert=True)
+        await callback.answer(
+            "❌ Ошибка при создании кампании", show_alert=True
+        )
 
 
 # === Окна ===

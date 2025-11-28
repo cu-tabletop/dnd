@@ -155,9 +155,9 @@ def get_campaign_info_api(
 
     if user_id:
         user_campaigns = Campaign.objects.filter(
-            id__in=CampaignMembership.objects.filter(user_id=user_id).values_list(
-                "campaign_id", flat=True
-            )
+            id__in=CampaignMembership.objects.filter(
+                user_id=user_id
+            ).values_list("campaign_id", flat=True)
         )
         campaigns = campaigns.union(user_campaigns)
 
@@ -223,7 +223,9 @@ def edit_permissions_api(
     if not CampaignMembership.objects.filter(
         campaign=campaign_obj, user_id=body.owner_id, status=2
     ).exists():
-        return 403, ForbiddenError(message="Only the owner can edit permissions")
+        return 403, ForbiddenError(
+            message="Only the owner can edit permissions"
+        )
 
     membership = get_object_or_404(
         CampaignMembership,

@@ -68,14 +68,18 @@ class RealDnDApiClient:
                         return await response.json()
                     elif response.status == 400:
                         error_data = await response.json()
-                        raise ValidationError(f"Ошибка валидации: {error_data}")
+                        raise ValidationError(
+                            f"Ошибка валидации: {error_data}"
+                        )
                     elif response.status == 403:
                         raise ForbiddenError("Доступ запрещен")
                     elif response.status == 404:
                         raise NotFoundError("Объект не найден")
                     else:
                         error_text = await response.text()
-                        logger.error(f"API error {response.status}: {error_text}")
+                        logger.error(
+                            f"API error {response.status}: {error_text}"
+                        )
                         raise ApiError(f"Ошибка API: {response.status}")
 
         except aiohttp.ClientError as e:
@@ -91,7 +95,9 @@ class RealDnDApiClient:
         return PingResponse(**result)
 
     # === CHARACTER ENDPOINTS ===
-    async def get_character(self, char_id: int) -> Optional[GetCharacterResponse]:
+    async def get_character(
+        self, char_id: int
+    ) -> Optional[GetCharacterResponse]:
         result = await self._make_request(
             "GET", "/api/character/get/", params={"char_id": char_id}
         )
@@ -160,7 +166,9 @@ class RealDnDApiClient:
             return ErrorResponse(error=str(e))
 
     # === INVENTORY ENDPOINTS ===
-    async def get_character_inventory(self, character_id: int) -> List[InventoryItem]:
+    async def get_character_inventory(
+        self, character_id: int
+    ) -> List[InventoryItem]:
         """Получить инвентарь персонажа - временная реализация через данные персонажа"""
         try:
             character = await self.get_character(character_id)
@@ -256,7 +264,9 @@ class RealDnDApiClient:
 
                     # Сохраняем обновленные данные
                     updated_data = {**character.data, "inventory": inventory}
-                    result = await self.update_character(character.id, updated_data)
+                    result = await self.update_character(
+                        character.id, updated_data
+                    )
 
                     if isinstance(result, ErrorResponse):
                         return result
@@ -293,12 +303,16 @@ class RealDnDApiClient:
 
                     # Обновляем данные
                     updated_data = {**character.data, "inventory": inventory}
-                    result = await self.update_character(character.id, updated_data)
+                    result = await self.update_character(
+                        character.id, updated_data
+                    )
 
                     if isinstance(result, ErrorResponse):
                         return result
 
-                    return DeleteInventoryItemResponse(message="Предмет удален")
+                    return DeleteInventoryItemResponse(
+                        message="Предмет удален"
+                    )
 
             return ErrorResponse(error="Предмет не найден")
 
@@ -316,7 +330,9 @@ class RealDnDApiClient:
         if campaign_id is not None:
             params["campaign_id"] = campaign_id
 
-        result = await self._make_request("GET", "/api/campaign/get/", params=params)
+        result = await self._make_request(
+            "GET", "/api/campaign/get/", params=params
+        )
 
         # Создаем временный объект для парсинга ответа
         if isinstance(result, list):
@@ -405,7 +421,9 @@ class RealDnDApiClient:
         )
         try:
             result = await self._make_request(
-                "POST", "/api/campaign/edit-permissions/", json=payload.model_dump()
+                "POST",
+                "/api/campaign/edit-permissions/",
+                json=payload.model_dump(),
             )
             return EditPermissionsResponse(**result)
         except (ValidationError, NotFoundError, ForbiddenError) as e:

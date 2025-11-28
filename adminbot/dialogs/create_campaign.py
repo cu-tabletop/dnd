@@ -24,11 +24,15 @@ async def get_confirm_data(dialog_manager: DialogManager, **kwargs):
 
     icon = None
     if file_id := dialog_manager.dialog_data.get("icon"):
-        icon = MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(file_id))
+        icon = MediaAttachment(
+            type=ContentType.PHOTO, file_id=MediaId(file_id)
+        )
 
     return {
         "title": dialog_manager.dialog_data.get("title", ""),
-        "description": dialog_manager.dialog_data.get("description", "не указано"),
+        "description": dialog_manager.dialog_data.get(
+            "description", "не указано"
+        ),
         "icon": icon,
     }
 
@@ -114,16 +118,21 @@ async def on_confirm(
         )
 
         if hasattr(result, "error"):
-            await callback.answer(f"❌ Ошибка: {result.error}", show_alert=True)
+            await callback.answer(
+                f"❌ Ошибка: {result.error}", show_alert=True
+            )
         else:
             await callback.answer(
-                f"✅ {campaign_data.get("title", "")} успешно создана", show_alert=True
+                f"✅ {campaign_data.get('title', '')} успешно создана",
+                show_alert=True,
             )
             await dialog_manager.done()
 
     except Exception as e:
         logger.error(f"Error creating campaign: {e}")
-        await callback.answer("❌ Ошибка при создании кампании", show_alert=True)
+        await callback.answer(
+            "❌ Ошибка при создании кампании", show_alert=True
+        )
 
 
 async def on_cancel(
@@ -135,7 +144,9 @@ async def on_cancel(
 
 # === Окна ===
 title_window = Window(
-    Const("🏰 Создание компейна\n\n" "Введите название:\n" "(максимум 255 символов)"),
+    Const(
+        "🏰 Создание компейна\n\nВведите название:\n(максимум 255 символов)"
+    ),
     TextInput(
         id="title_input",
         on_success=on_title_entered,

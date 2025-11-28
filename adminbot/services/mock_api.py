@@ -131,11 +131,15 @@ class MockDnDApiClient:
         return PingResponse(message="pong")
 
     # === CHARACTER ENDPOINTS ===
-    async def get_character(self, char_id: int) -> Optional[GetCharacterResponse]:
+    async def get_character(
+        self, char_id: int
+    ) -> Optional[GetCharacterResponse]:
         await self._simulate_delay()
         for character in self.characters:
             if character.id == char_id:
-                return GetCharacterResponse.model_validate(character.model_dump())
+                return GetCharacterResponse.model_validate(
+                    character.model_dump()
+                )
         return None
 
     async def upload_character(
@@ -143,7 +147,9 @@ class MockDnDApiClient:
     ) -> Union[UploadCharacterResponse, ErrorResponse]:
         await self._simulate_delay()
 
-        campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
+        campaign_exists = any(
+            campaign.id == campaign_id for campaign in self.campaigns
+        )
         if not campaign_exists:
             return ErrorResponse(error="Кампания не найдена")
 
@@ -158,7 +164,9 @@ class MockDnDApiClient:
         self.characters.append(new_character)
         self.next_character_id += 1
 
-        return UploadCharacterResponse.model_validate(new_character.model_dump())
+        return UploadCharacterResponse.model_validate(
+            new_character.model_dump()
+        )
 
     async def get_campaign_characters(
         self, campaign_id: int
@@ -181,16 +189,22 @@ class MockDnDApiClient:
                 character.data["last_activity"] = datetime.now().strftime(
                     "%Y-%m-%d %H:%M"
                 )
-                return GetCharacterResponse.model_validate(character.model_dump())
+                return GetCharacterResponse.model_validate(
+                    character.model_dump()
+                )
 
         return ErrorResponse(error="Персонаж не найден")
 
     # === INVENTORY ENDPOINTS ===
-    async def get_character_inventory(self, character_id: int) -> List[InventoryItem]:
+    async def get_character_inventory(
+        self, character_id: int
+    ) -> List[InventoryItem]:
         """Получить инвентарь персонажа"""
         await self._simulate_delay()
         return [
-            item for item in self.inventory_items if item.character_id == character_id
+            item
+            for item in self.inventory_items
+            if item.character_id == character_id
         ]
 
     async def add_inventory_item(
@@ -200,7 +214,9 @@ class MockDnDApiClient:
         await self._simulate_delay()
 
         # Проверяем существование персонажа
-        character_exists = any(char.id == character_id for char in self.characters)
+        character_exists = any(
+            char.id == character_id for char in self.characters
+        )
         if not character_exists:
             return ErrorResponse(error="Персонаж не найден")
 
@@ -282,14 +298,18 @@ class MockDnDApiClient:
         self.campaigns.append(new_campaign)
         self.next_campaign_id += 1
 
-        return CreateCampaignResponse(message=f"Кампания '{title}' создана успешно")
+        return CreateCampaignResponse(
+            message=f"Кампания '{title}' создана успешно"
+        )
 
     async def add_to_campaign(
         self, campaign_id: int, owner_id: int, user_id: int
     ) -> Union[AddToCampaignResponse, ErrorResponse]:
         await self._simulate_delay()
 
-        campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
+        campaign_exists = any(
+            campaign.id == campaign_id for campaign in self.campaigns
+        )
         if not campaign_exists:
             return ErrorResponse(error="Кампания не найдена")
 
@@ -298,11 +318,17 @@ class MockDnDApiClient:
         )
 
     async def edit_permissions(
-        self, campaign_id: int, owner_id: int, user_id: int, status: CampaignPermissions
+        self,
+        campaign_id: int,
+        owner_id: int,
+        user_id: int,
+        status: CampaignPermissions,
     ) -> Union[EditPermissionsResponse, ErrorResponse]:
         await self._simulate_delay()
 
-        campaign_exists = any(campaign.id == campaign_id for campaign in self.campaigns)
+        campaign_exists = any(
+            campaign.id == campaign_id for campaign in self.campaigns
+        )
         if not campaign_exists:
             return ErrorResponse(error="Кампания не найдена")
 
