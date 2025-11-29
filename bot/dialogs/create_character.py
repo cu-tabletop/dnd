@@ -1,12 +1,16 @@
+import json
 import logging
 from aiogram import Router
+from aiogram.enums import content_type
 from aiogram_dialog import Dialog, Window, DialogManager, SubManager
-from aiogram_dialog.widgets.kbd import Button, Group, Row, ListGroup, Select
+from aiogram_dialog.widgets.kbd import Button, Cancel
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.text import Const, Format, Multi
-from aiogram.types import CallbackQuery
+from aiogram_dialog.widgets.link_preview import LinkPreview
+from aiogram.types import CallbackQuery, Message
 
 from services.api_client import api_client
-from . import states as campaign_states
+import states.states as states
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +38,6 @@ async def get_campaigns_data(dialog_manager: DialogManager, **kwargs):
     start_idx = page * campaigns_per_page
     end_idx = start_idx + campaigns_per_page
     current_campaigns = campaigns[start_idx:end_idx]
-
     total_pages = (len(campaigns) + campaigns_per_page - 1) // campaigns_per_page
 
     return {
@@ -69,66 +72,43 @@ async def on_campaign_selected(
     )
 
 
-async def on_page_change(
-    callback: CallbackQuery,
-    button: Button,
+async def on_character_load(
+    message: Message,
+    widget: MessageInput,
     dialog_manager: DialogManager,
-    direction: int,
 ):
-    current_page = dialog_manager.dialog_data.get("page", 0)
-    campaigns_data = await get_campaigns_data(dialog_manager)
-    total_pages = campaigns_data["total_pages"]
+    if message.document and message.document.file_name.endswith(".json"):
+        try:
+            # Берем фото максимального качества
+            doc = message.document
 
-    new_page = current_page + direction
-    if 0 <= new_page < total_pages:
-        dialog_manager.dialog_data["page"] = new_page
-        await dialog_manager.update({})
+            file = await message.bot.get_file(doc.file_id)
+            json_file = await message.bot.download(file)
+            json_data = json_file.read().decode("utf-8")
+            json_data = json.loads(json_file.read().decode("utf-8"))
+
+            character = await api_client.create_character(
+                message.from_user.id, json_data
+            )
+
+            await message.answer("Персонаж {character.name} успешно создан!")
+            await dialog_manager.done(result={"selected_character": character})
+        except Exception as e:
+            logger.error(f"Error processing photo: {e}")
+            await message.answer("❌ Ошибка при обработке персонажа")
+    else:
+        await message.answer(
+            "❌ Пожалуйста, отправьте файл с персонажем в формате .json"
+        )
 
 
 # === Окна ===
 campaign_list_window = Window(
-    Multi(
-        Const("🏰 Магическая Академия - Управление кампейнами\n\n"),
-        Format("Страница {current_page}/{total_pages}\n"),
-    ),
-    ListGroup(
-        Button(
-            Format("{item.title}"),
-            id="campaign",
-            on_click=on_campaign_selected,
-        ),
-        item_id_getter=lambda item: str(item.id),
-        items="campaigns",
-        id="campaigns_group",
-        when="has_campaigns",
-    ),
-    Const(
-        "У вас пока нет доступных партий",
-        when=lambda data, widget, manager: not data.get("has_campaigns", False),
-    ),
-    Group(
-        Row(
-            Button(
-                Const("⬅️"),
-                id="prev_page",
-                on_click=lambda c, b, d: on_page_change(c, b, d, -1),
-                when="has_prev",
-            ),
-            Button(
-                Const("➡️"),
-                id="next_page",
-                on_click=lambda c, b, d: on_page_change(c, b, d, 1),
-                when="has_next",
-            ),
-        ),
-        width=2,
-    ),
-    Button(
-        Const("➕ Создать новую"),
-        id="create_campaign",
-        on_click=lambda c, b, d: d.start(campaign_states.CreateCampaign.select_title),
-    ),
-    state=campaign_states.CampaignManagerMain.main,
+    Const("Содайте персонажа на https://longstoryshort.app и загрузите .json здесь\n"),
+    LinkPreview(is_disabled=True),
+    MessageInput(on_character_load, content_type.ContentType.DOCUMENT),
+    Cancel(Const("🔙 Отмена")),
+    state=states.CrateCharacter.main,
     getter=get_campaigns_data,
 )
 
