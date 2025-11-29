@@ -19,9 +19,6 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str
     REDIS_DB: int = Field(alias="ADMIN_REDIS_DB")
 
-    USE_API_STUBS: bool = False
-    STUB_DELAY: float = 0.5  # Задержка для имитации сетевого запроса
-
     # Конфигурация модели - ИСПРАВЛЕННАЯ ВЕРСИЯ
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"

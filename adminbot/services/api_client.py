@@ -2,7 +2,6 @@ import aiohttp
 import logging
 from typing import Optional, List, Union
 
-from .mock_api import MockDnDApiClient
 from settings import settings
 from .models import (
     AddInventoryItemResponse,
@@ -17,7 +16,6 @@ from .models import (
     UploadCharacterResponse,
     CreateCampaignResponse,
     UpdateCampaignRequest,
-    GetCampaignsResponse,
     AddToCampaignResponse,
     EditPermissionsResponse,
     CampaignModelSchema,
@@ -430,18 +428,6 @@ class RealDnDApiClient:
             return ErrorResponse(error=str(e))
         except ApiError as e:
             return ErrorResponse(error=str(e))
-
-
-# Глобальная переменная для переключения режима
-USE_MOCK_API = settings.USE_API_STUBS
-
-
-def get_api_client():
-    """Фабрика для получения клиента API"""
-    if not USE_MOCK_API:
-        return RealDnDApiClient(settings.BACKEND_URL)
-    else:
-        return MockDnDApiClient()
 
 
 # Глобальный экземпляр клиента
