@@ -1,6 +1,8 @@
 import asyncio
 import importlib
 import logging
+import signal
+from contextlib import suppress
 from pathlib import Path
 from types import ModuleType
 from typing import Iterable
@@ -59,12 +61,10 @@ def register_all_handlers(
         logger.warning("Не найдено ни одного роутера для регистрации")
 
 
-async def on_startup(bot: Bot) -> None:
-    await init_db()
+async def on_startup(bot: Bot) -> None: ...
 
 
-async def on_shutdown(bot: Bot) -> None:
-    await close_db()
+async def on_shutdown(bot: Bot) -> None: ...
 
 
 async def run_bot(
@@ -100,29 +100,67 @@ async def run_bot(
     dp.shutdown.register(on_shutdown)
 
     try:
-        await dp.start_polling(bot)
+        await dp.start_polling(bot, handle_signals=False)
     finally:
         await dp.storage.close()
         await bot.session.close()
 
 
-async def main() -> None:
-    logger.info("Запущен бот в проекте: %s", settings.PROJECT_NAME)
+async def run_bot_safe(*args, **kwargs):
+    try:
+        await run_bot(*args, **kwargs)
+    except asyncio.CancelledError:
+        pass
 
-    await asyncio.gather(
-        run_bot(
+
+async def main() -> None:
+    logger.info("Запущен проек: %s", settings.PROJECT_NAME)
+
+    await init_db()
+    # стартуем ботов как background задачи
+    task_player = asyncio.create_task(
+        run_bot_safe(
             settings.TOKEN_PLAYER,
             0,
             path=HANDLERS_PATH / "player",
             package=HANDLERS_PACKAGE + ".player",
-        ),
-        run_bot(
+        )
+    )
+    task_admin = asyncio.create_task(
+        run_bot_safe(
             settings.TOKEN_ADMIN,
             1,
             path=HANDLERS_PATH / "admin",
             package=HANDLERS_PACKAGE + ".admin",
-        ),
+        )
     )
+
+    supress(task_admin, task_player)
+
+    await asyncio.gather(task_player, task_admin)
+
+
+def supress(*tasks):
+    loop = asyncio.get_running_loop()
+    with suppress(NotImplementedError):  # pragma: no cover
+        # Signals handling is not supported on Windows
+        # It also can't be covered on Windows
+        loop.add_signal_handler(
+            signal.SIGTERM,
+            lambda _: cancel_tasks(*tasks),
+            signal.SIGTERM,
+        )
+        loop.add_signal_handler(
+            signal.SIGINT,
+            lambda _: cancel_tasks(*tasks),
+            signal.SIGINT,
+        )
+
+def cancel_tasks(*tasks):
+    logger.warning("Получен ctrl+c, завершаем...")
+    for task in tasks:
+        task.cancel()
+    asyncio.gather(close_db())
 
 
 if __name__ == "__main__":
