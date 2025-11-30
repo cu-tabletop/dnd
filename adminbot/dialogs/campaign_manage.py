@@ -41,6 +41,8 @@ async def get_campaign_manage_data(dialog_manager: DialogManager, **kwargs):
 
 async def update_data(_, result, dialog_manager: DialogManager, **kwargs):
     logger.debug(f"Результат: {result}")
+    if not result:
+        return
     dialog_manager.dialog_data["selected_campaign"].update(
         result["update_data"]
     )
