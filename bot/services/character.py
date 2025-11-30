@@ -85,6 +85,11 @@ class CharacterData(BaseModel):
         )
 
     def preview_stats(self) -> str:
+        """
+        Выводит сообщение пользователю, которое содержит информацию о статистиках персонажа по категориям
+        к каждой категории и спасбросок, и аналогичная статистика
+        :return:
+        """
         return self._repr_default_skills() + "\n\n" + self._repr_prof_skills()
 
     def _repr_default_skills(self) -> str:
@@ -97,7 +102,7 @@ class CharacterData(BaseModel):
 
     def _repr_prof_skills(self) -> str:
         return "\n".join(
-            f"<b>{representation}:</b> {'✅' if skill in self.prof_skills else '❌'}"
+            f"<b>{representation}:</b> {self.skills[skill]}"
             for skill, representation in SKILLS_CONVERSION.items()
         )
 
