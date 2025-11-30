@@ -88,6 +88,6 @@ select = ["ALL"]
 task-tags = ["TODO"]
 
 [tool.aerich]
-tortoise_orm = "services.settings.settings.tortoise_orm"
+tortoise_orm = "services.settings.settings.tortoise_config"
 location = "./migrations"
 src_folder = "./."

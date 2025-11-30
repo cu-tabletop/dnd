@@ -11,7 +11,7 @@ async def init_db() -> None:
     """Инициализация подключения к Tortoise ORM"""
 
     await Tortoise.init(config=settings.tortoise_config)
-    if settings.tortoise_generate_schemas:
+    if settings.TORTOISE_GENERATE_SCHEMAS:
         await Tortoise.generate_schemas()
         logger.info("Генерация схем Tortoise ORM выполнена")
     logger.info("Tortoise ORM инициализирована")

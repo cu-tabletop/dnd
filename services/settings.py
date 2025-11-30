@@ -1,39 +1,35 @@
 from typing import Set, Any, Optional
 from zoneinfo import ZoneInfo
 
-from pydantic import Field, computed_field
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "dnd"
     LOG_LEVEL: str = "INFO"
-    TZ: str = Field(default="Europe/Moscow")
+    TZ: str = "Europe/Moscow"
 
-    TOKEN_ADMIN: str = Field(alias="ADMIN_BOT_TOKEN")
-    TOKEN_PLAYER: str = Field(alias="PLAYER_BOT_TOKEN")
-    ADMIN_IDS: Set[int]
+    TOKEN_ADMIN: str = ""
+    TOKEN_PLAYER: str = ""
+    ADMIN_IDS: Set[int] = set()
 
     # ^ PostgreSQL
-    DB_HOST: str = Field(default="db", alias="POSTGRES_HOST")
-    DB_PORT: int = Field(default=5432, alias="POSTGRES_PORT")
-    DB_NAME: str = Field(default="db", alias="POSTGRES_DB")
-    DB_USER: str = Field(default="admin", alias="POSTGRES_USER")
-    DB_PASSWORD: str = Field(default="admin", alias="POSTGRES_PASSWORD")
+    DB_HOST: str = "db"
+    DB_PORT: int = 5432
+    DB_NAME: str = "db"
+    DB_USER: str = "admin"
+    DB_PASSWORD: str = "admin"
 
     # ^ Redis
-    REDIS_HOST: str
-    REDIS_PORT: int
-    REDIS_PASSWORD: str
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: int = 6379
+    REDIS_PASSWORD: str = "secure_password"
 
     # ^ Tortoise ORM
-    tortoise_app: str = Field(default="models", alias="TORTOISE_APP")
-    tortoise_models: tuple[str, ...] = Field(
-        default=("db.models", "aerich.models"), alias="TORTOISE_MODELS"
-    )
-    tortoise_generate_schemas: bool = Field(
-        default=False, alias="TORTOISE_GENERATE_SCHEMAS"
-    )
+    TORTOISE_APP: str = "models"
+    TORTOISE_MODELS: tuple[str, ...] = ("db.models", "aerich.models")
+    TORTOISE_GENERATE_SCHEMAS: bool = False
 
     @computed_field
     @property
@@ -57,8 +53,8 @@ class Settings(BaseSettings):
         return {
             "connections": {"default": self.tortoise_db_url},
             "apps": {
-                self.tortoise_app: {
-                    "models": self.tortoise_models,
+                self.TORTOISE_APP: {
+                    "models": self.TORTOISE_MODELS,
                     "default_connection": "default",
                 }
             },
@@ -75,8 +71,8 @@ class Settings(BaseSettings):
 
     # Конфигурация модели
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=True
     )
 
 
-settings = Settings()  # type: ignore
+settings = Settings()
