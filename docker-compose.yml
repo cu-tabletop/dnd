@@ -1,18 +1,4 @@
 ﻿services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    restart: unless-stopped
-    depends_on:
-      - db
-    env_file:
-      - .env
-    volumes:
-      - campaign_icons:/app/campaign_icons
-      - chardata:/app/chardata
   db:
     image: postgres:18-alpine
     restart: unless-stopped
@@ -28,31 +14,19 @@
     ports:
       - "8080:8080"
 
-  bot-player:
+  bot:
     build:
-      context: ./bot
+      context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       - redis
-      - backend
-    env_file:
-      - .env
-  bot-admin:
-    build:
-      context: ./adminbot
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    depends_on:
-      - redis
-      - backend
+      - db
     env_file:
       - .env
   redis:
     image: redis:8.2.2-alpine3.22
     container_name: redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
       - ./redis.conf:/usr/local/etc/redis/redis.conf
@@ -62,5 +36,3 @@
 volumes:
   postgres_data:
   redis_data:
-  campaign_icons:
-  chardata:
