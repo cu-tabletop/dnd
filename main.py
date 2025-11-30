@@ -37,9 +37,7 @@ def _iter_handler_modules(
             continue
         relative = module.relative_to(path).with_suffix("")
         dotted = ".".join((package, *relative.parts))
-        logger.info(f"included {dotted}")
-        import_module = importlib.import_module(dotted)
-        yield import_module
+        yield importlib.import_module(dotted)
 
 
 def register_all_handlers(
@@ -52,7 +50,6 @@ def register_all_handlers(
         router = getattr(module, "router", None)
         if router is None:
             continue
-        logger.info(f"\tadded: {router}")
         routers.append(router)
 
     if routers:
@@ -155,6 +152,7 @@ def supress(*tasks):
             lambda _: cancel_tasks(*tasks),
             signal.SIGINT,
         )
+
 
 def cancel_tasks(*tasks):
     logger.warning("Получен ctrl+c, завершаем...")
