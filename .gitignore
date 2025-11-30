@@ -357,3 +357,4 @@ __marimo__/
 
 # Ignore common VS Code files
 .vscode/
+redis.conf
