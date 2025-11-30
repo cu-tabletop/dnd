@@ -1,7 +1,7 @@
 from aiogram.fsm.state import State, StatesGroup
 
 
-class MainMenu(StatesGroup):
+class Menu(StatesGroup):
     main = State()
 
 

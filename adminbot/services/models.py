@@ -1,85 +1,62 @@
 from pydantic import BaseModel
-from typing import Optional, Union, List
-from enum import IntEnum
-from pydantic import RootModel
+from typing import Optional
+
+# from enum import IntEnum
+from datetime import datetime
 
 
+# Базовые схемы
 class Message(BaseModel):
     message: str
 
 
-class ValidationError(BaseModel):
-    message: Union[str, dict, list] = "Ошибка в данных запроса."
+class ErrorResponse(BaseModel):
+    error: str
 
 
-class NotFoundError(BaseModel):
-    message: str = "Объект не найден"
+# Player schemas
+class PlayerResponse(BaseModel):
+    id: int
+    telegram_id: int
+    telegram_username: Optional[str]
+    first_name: Optional[str]
+    last_name: Optional[str]
 
 
-class ForbiddenError(BaseModel):
-    message: str = "Запрещено"
+# Invitation schemas
+class InvitationResponse(BaseModel):
+    id: int
+    campaign_id: int
+    campaign_title: str
+    invited_player_telegram_id: int
+    invited_by_telegram_id: int
+    status: str
+    token: str
+    expires_at: datetime
+    created_at: datetime
 
 
+# Campaign schemas
+class CampaignModelSchema(BaseModel):
+    id: Optional[int] = None
+    title: str
+    description: Optional[str] = ""
+    icon: Optional[str] = None
+    verified: bool = False
+    private: bool = False
+
+
+class CreateCampaignResponse(Message):
+    pass
+
+
+# Character schemas
 class CharacterOut(BaseModel):
     id: int
     owner_id: int
     owner_telegram_id: int
     campaign_id: int
     data: dict
-
-
-class UploadCharacter(BaseModel):
-    owner_id: int
-    campaign_id: int
-    data: dict
-
-
-class CreateCampaignRequest(BaseModel):
-    telegram_id: int
-    title: str
-    icon: Optional[str] = None  # tgmedia_id
-    description: Optional[str] = None
-
-
-class UpdateCampaignRequest(BaseModel):
-    telegram_id: int
-    campaign_id: int
-    title: Optional[str]
-    icon: Optional[str] = None  # tgmedia_id
-    description: Optional[str] = None
-
-
-class CampaignModelSchema(BaseModel):
-    id: Optional[int] = None
-    title: str
-    description: Optional[str] = ""
-    icon: Optional[str] = None  # tgmedia_id
-    verified: bool = False
-    private: bool = False
-
-
-class AddToCampaignRequest(BaseModel):
-    campaign_id: int
-    owner_id: int
-    user_id: int
-
-
-class CampaignPermissions(IntEnum):
-    PARTICIPANT = 0
-    EDITOR = 1
-    OWNER = 2
-
-
-class CampaignEditPermissions(BaseModel):
-    campaign_id: int
-    owner_id: int
-    user_id: int
-    status: CampaignPermissions
-
-
-# Response types for API methods
-class PingResponse(Message):
-    pass
 
 
 class GetCharacterResponse(CharacterOut):
@@ -90,27 +67,7 @@ class UploadCharacterResponse(CharacterOut):
     pass
 
 
-class CreateCampaignResponse(Message):
-    pass
-
-
-class GetCampaignsResponse(RootModel):
-    root: Union[CampaignModelSchema, List[CampaignModelSchema]]
-
-
-class AddToCampaignResponse(Message):
-    pass
-
-
-class EditPermissionsResponse(Message):
-    pass
-
-
-# Error response type
-class ErrorResponse(BaseModel):
-    error: Union[ValidationError, NotFoundError, ForbiddenError, str]
-
-
+# Inventory schemas
 class InventoryItemBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -132,11 +89,6 @@ class InventoryItem(InventoryItemBase):
     character_id: int
 
 
-# Response types for inventory
-class GetInventoryResponse(RootModel):
-    root: List[InventoryItem]
-
-
 class AddInventoryItemResponse(InventoryItem):
     pass
 
@@ -146,4 +98,9 @@ class UpdateInventoryItemResponse(InventoryItem):
 
 
 class DeleteInventoryItemResponse(Message):
+    pass
+
+
+# Response types
+class PingResponse(Message):
     pass

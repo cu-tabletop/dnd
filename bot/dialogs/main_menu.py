@@ -29,7 +29,7 @@ campaign_list_window = Window(
     SwitchTo(
         Const("Архив_уведомлений"), "switch_to_notification", states.Notifications.main
     ),
-    state=states.MainMenu.main,
+    state=states.Menu.main,
     # getter=get_campaigns_data,
 )
 

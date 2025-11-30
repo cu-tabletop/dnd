@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 
 
 # === Геттеры ===
-async def get_characters(manager: DialogManager, **kwargs):
-    selected_campaign = manager.start_data.get("selected_campaign", {})
-    manager.dialog_data["selected_campaign"] = selected_campaign
+async def get_characters(dialog_manager: DialogManager, **kwargs):
+    selected_campaign = dialog_manager.start_data.get("selected_campaign", {})
+    dialog_manager.dialog_data["selected_campaign"] = selected_campaign
     campaign_id = selected_campaign.get("id", 0)
     characters = await api_client.get_campaign_characters(campaign_id)
 
@@ -219,30 +219,26 @@ async def on_add_player(
         manager.dialog_data["username"] = username
 
         try:
-            players = await api_client.search_players(username=username)
-            if players:
-                player = players[0]
-                manager.dialog_data["player"] = player
 
-                campaign_id = manager.dialog_data["selected_campaign"].get("id", 0)
-                invited_by_telegram_id = message.from_user.id
+            campaign_id = manager.dialog_data["selected_campaign"].get("id", 0)
+            invited_by_telegram_id = message.from_user.id
 
-                try:
-                    await api_client.create_invitation_by_username(
-                        campaign_id=campaign_id,
-                        username=username,
-                        invited_by_telegram_id=invited_by_telegram_id,
-                    )
+            try:
+                await api_client.create_invitation_by_username(
+                    campaign_id=campaign_id,
+                    username=username,
+                    invited_by_telegram_id=invited_by_telegram_id,
+                )
 
-                    message.answer("✅ Успешно")
-                    await manager.switch_to(
-                        campaign_states.ManageCharacters.character_selection
-                    )
+                message.answer("✅ Успешно")
+                await manager.switch_to(
+                    campaign_states.ManageCharacters.character_selection
+                )
 
-                except ValueError as e:
-                    logger.warning(e)
-                    await message.answer("❌ Ошибка при отправки приглашения")
-            else:
+            except ValueError as e:
+                logger.warning(e)
+                await message.answer("❌ Ошибка при отправки приглашения")
+                return
                 await message.answer(
                     f"❌ Игрок @{username} не найден в системе.\n"
                     "Попросите игрока сначала запустить игрового бота."
@@ -250,7 +246,8 @@ async def on_add_player(
         except Exception as e:
             logger.warning(e)
             await message.answer("❌ Ошибка при поиске игрока")
-    await message.answer("Введите имя в формате @username")
+    else:
+        await message.answer("Введите имя в формате @username")
 
 
 # === Окна ===
@@ -418,6 +415,7 @@ character_menu_window = Window(
 
 # === Создание диалога и роутера ===
 dialog = Dialog(
+    add_player_window,
     character_window,
     character_menu_window,
     level_window,

@@ -58,7 +58,7 @@ async def get_invite_data(message, dialog_manager: DialogManager, kwargs):
         "inviter_name": owner_name,
         "description": campaign.description,
         "campaign_id": campaign_id,
-        characters_data,
+        "characters_data": characters_data,
     }
 
 
@@ -75,13 +75,13 @@ async def on_character_selected(
 
     try:
         # Принимаем приглашение выбранным персонажем
-        result = await api_client.accept_invite(
+        result = await api_client.acceptinvite(
             campaign_id=campaign.id, character_id=character_id
         )
 
         if result.success:
             await callback.answer("✅ Вы успешно присоединились к кампании!")
-            await manager.switch_to(states.MainMenu.main)
+            await manager.switch_to(states.Menu.main)
         else:
             await callback.answer("❌ Ошибка присоединения к кампании")
 
@@ -126,8 +126,7 @@ invite_dialog_window = Window(
         "Страница {current_page}/{total_ppages}\n",
         when=lambda data, w, m: data.get("total_pages", 1) > 1,
     ),
-    Const("Выберите персонажа для присоединения:\n",
-          when="has_characters"),
+    Const("Выберите персонажа для присоединения:\n", when="has_characters"),
     ListGroup(
         Button(
             Format("👤 {item.name} (Ур. {item.level})"),
@@ -164,7 +163,7 @@ invite_dialog_window = Window(
         Const("➕ Создать нового персонажа"),
         id="create_character",
         on_click=start_create_character,
-        when=lambda data, w, m: not data.get("has_characters", False)
+        when=lambda data, w, m: not data.get("has_characters", False),
     ),
     state=states.Invitation.main,
     getter=get_invite_data,
