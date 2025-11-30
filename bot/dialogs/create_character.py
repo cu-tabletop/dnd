@@ -38,7 +38,9 @@ async def get_campaigns_data(dialog_manager: DialogManager, **kwargs):
     start_idx = page * campaigns_per_page
     end_idx = start_idx + campaigns_per_page
     current_campaigns = campaigns[start_idx:end_idx]
-    total_pages = (len(campaigns) + campaigns_per_page - 1) // campaigns_per_page
+    total_pages = (
+        len(campaigns) + campaigns_per_page - 1
+    ) // campaigns_per_page
 
     return {
         "campaigns": current_campaigns,
@@ -59,12 +61,18 @@ async def on_campaign_selected(
 
     campaigns_data = await get_campaigns_data(manager)
     selected_campaign = next(
-        (camp for camp in campaigns_data["campaigns"] if str(camp.id) == campaign_id),
+        (
+            camp
+            for camp in campaigns_data["campaigns"]
+            if str(camp.id) == campaign_id
+        ),
         None,
     )
 
     if selected_campaign:
-        manager.dialog_data["selected_campaign"] = selected_campaign.model_dump()
+        manager.dialog_data["selected_campaign"] = (
+            selected_campaign.model_dump()
+        )
 
     await manager.start(
         campaign_states.CampaignManage.main,
@@ -104,7 +112,9 @@ async def on_character_load(
 
 # === Окна ===
 campaign_list_window = Window(
-    Const("Содайте персонажа на https://longstoryshort.app и загрузите .json здесь\n"),
+    Const(
+        "Содайте персонажа на https://longstoryshort.app и загрузите .json здесь\n"
+    ),
     LinkPreview(is_disabled=True),
     MessageInput(on_character_load, content_type.ContentType.DOCUMENT),
     Cancel(Const("🔙 Отмена")),

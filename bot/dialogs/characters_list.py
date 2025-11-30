@@ -1,7 +1,14 @@
 import logging
 from aiogram import Router
 from aiogram_dialog import Dialog, Window, DialogManager, SubManager
-from aiogram_dialog.widgets.kbd import Button, Group, Row, ListGroup, Cancel, SwitchTo
+from aiogram_dialog.widgets.kbd import (
+    Button,
+    Group,
+    Row,
+    ListGroup,
+    Cancel,
+    SwitchTo,
+)
 from aiogram_dialog.widgets.text import Const, Format, Multi
 from aiogram.types import CallbackQuery
 
@@ -32,7 +39,9 @@ async def get_characters_data(dialog_manager: DialogManager, **kwargs):
     start_idx = page * campaigns_per_page
     end_idx = start_idx + campaigns_per_page
     current_campaigns = campaigns[start_idx:end_idx]
-    total_pages = (len(campaigns) + campaigns_per_page - 1) // campaigns_per_page
+    total_pages = (
+        len(campaigns) + campaigns_per_page - 1
+    ) // campaigns_per_page
 
     return {
         "characters": current_campaigns,
@@ -65,7 +74,9 @@ async def on_character_selected(
     )
 
     if selected_character:
-        manager.dialog_data["selected_character"] = selected_character.model_dump()
+        manager.dialog_data["selected_character"] = (
+            selected_character.model_dump()
+        )
 
     await manager.start(
         states.CharacterInfo.main,
@@ -95,7 +106,8 @@ campaign_list_window = Window(
         Const("🏰 Магическая Академия - Ваши персонажи:\n\n"),
         Format(
             "Страница {current_page}/{total_pages}\n",
-            when=lambda data, widget, manager: not data.get("total_pages", 1) > 1,
+            when=lambda data, widget, manager: not data.get("total_pages", 1)
+            > 1,
         ),
     ),
     ListGroup(
@@ -111,7 +123,9 @@ campaign_list_window = Window(
     ),
     Const(
         "У вас пока нет персонажей",
-        when=lambda data, widget, manager: not data.get("has_characters", False),
+        when=lambda data, widget, manager: not data.get(
+            "has_characters", False
+        ),
     ),
     Group(
         Row(
@@ -131,7 +145,9 @@ campaign_list_window = Window(
         width=2,
     ),
     Cancel(Const("🔙 Назад")),
-    SwitchTo(Const("➕ Добавить"), "create_character", states.CrateCharacter.main),
+    SwitchTo(
+        Const("➕ Добавить"), "create_character", states.CrateCharacter.main
+    ),
     state=states.CharacterList.main,
     getter=get_characters_data,
 )

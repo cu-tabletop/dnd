@@ -23,11 +23,19 @@ async def on_click_campaign_list(
 # === Окна ===
 campaign_list_window = Window(
     Const("Привет"),
-    SwitchTo(Const("Персонажи"), "switch_to_character_list", states.CharacterList.main),
-    Button(Const("Кампейны"), "switch_to_campaign_list", on_click_campaign_list),
+    SwitchTo(
+        Const("Персонажи"),
+        "switch_to_character_list",
+        states.CharacterList.main,
+    ),
+    Button(
+        Const("Кампейны"), "switch_to_campaign_list", on_click_campaign_list
+    ),
     Button(Const("Рейтинг"), "switch_to_rating", on_click_campaign_list),
     SwitchTo(
-        Const("Архив_уведомлений"), "switch_to_notification", states.Notifications.main
+        Const("Архив_уведомлений"),
+        "switch_to_notification",
+        states.Notifications.main,
     ),
     state=states.Menu.main,
     # getter=get_campaigns_data,

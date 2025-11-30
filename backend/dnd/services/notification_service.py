@@ -21,7 +21,9 @@ class NotificationService:
             channel_name = f"notifications:{telegram_id}"
             self.redis_client.publish(
                 channel_name,
-                json.dumps({"type": "new_invitation", "data": invitation_data}),
+                json.dumps(
+                    {"type": "new_invitation", "data": invitation_data}
+                ),
             )
         except Exception as e:
             print(f"Error sending Redis notification: {e}")
@@ -33,7 +35,8 @@ class NotificationService:
         try:
             channel_name = f"notifications:{master_telegram_id}"
             self.redis_client.publish(
-                channel_name, json.dumps({"type": "invitation_accepted", "data": data})
+                channel_name,
+                json.dumps({"type": "invitation_accepted", "data": data}),
             )
         except Exception as e:
             print(f"Error sending Redis notification: {e}")

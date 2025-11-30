@@ -2,7 +2,11 @@ from ninja import Router
 
 # from django.shortcuts import get_object_or_404
 from dnd.models.player import Player
-from dnd.schemas.player import PlayerResponse, PlayerSearchSchema, PlayerUpdateRequest
+from dnd.schemas.player import (
+    PlayerResponse,
+    PlayerSearchSchema,
+    PlayerUpdateRequest,
+)
 from dnd.schemas.default import Message
 
 router = Router()

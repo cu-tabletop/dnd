@@ -19,7 +19,9 @@ class Invitation(models.Model):
     invited_by = models.ForeignKey(
         "Player", on_delete=models.CASCADE, related_name="sent_invitations"
     )
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="pending"
+    )
     token = models.CharField(max_length=100, unique=True)
     expires_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)

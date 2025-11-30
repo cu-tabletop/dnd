@@ -11,7 +11,9 @@ class Character(models.Model):
         null=True,
         blank=True,
     )
-    campaign = models.ForeignKey("Campaign", models.CASCADE, null=True, blank=True)
+    campaign = models.ForeignKey(
+        "Campaign", models.CASCADE, null=True, blank=True
+    )
     data = models.FileField(upload_to="chardata")
 
     class Meta:
@@ -24,7 +26,9 @@ class Character(models.Model):
 
     def save_data(self, data: dict):
         """Internal function that saves data to a file stored in database."""
-        self.data.save(f"{self.id}.json", ContentFile(json.dumps(data)), save=False)
+        self.data.save(
+            f"{self.id}.json", ContentFile(json.dumps(data)), save=False
+        )
 
     def get(self, *args):
         """

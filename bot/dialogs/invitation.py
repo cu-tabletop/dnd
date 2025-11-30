@@ -42,7 +42,9 @@ async def get_invite_data(message, dialog_manager: DialogManager, kwargs):
         start_idx = page * characters_per_page
         end_idx = start_idx + characters_per_page
         current_characters = characters[start_idx:end_idx]
-        total_pages = (len(characters) + characters_per_page - 1) // characters_per_page
+        total_pages = (
+            len(characters) + characters_per_page - 1
+        ) // characters_per_page
 
         characters_data = {
             "characters": current_characters,
@@ -64,7 +66,10 @@ async def get_invite_data(message, dialog_manager: DialogManager, kwargs):
 
 # === Обработчики кнопок ===
 async def on_character_selected(
-    callback: CallbackQuery, button: Button, manager: DialogManager, item_id: int
+    callback: CallbackQuery,
+    button: Button,
+    manager: DialogManager,
+    item_id: int,
 ):
     character_id = item_id
     campaign = manager.dialog_data["invite_campaign"]

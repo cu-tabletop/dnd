@@ -22,12 +22,16 @@ from dnd.services.notification_service import notification_service
 router = Router()
 
 
-@router.post("/create", response={200: InvitationResponse, 404: Message, 400: Message})
+@router.post(
+    "/create", response={200: InvitationResponse, 404: Message, 400: Message}
+)
 def create_invitation(request, data: InvitationCreateRequest):
     """Создание приглашения в кампанию"""
     try:
         campaign = get_object_or_404(Campaign, id=data.campaign_id)
-        invited_by = get_object_or_404(Player, telegram_id=data.invited_by_telegram_id)
+        invited_by = get_object_or_404(
+            Player, telegram_id=data.invited_by_telegram_id
+        )
         invited_player = get_object_or_404(
             Player, telegram_id=data.invited_player_telegram_id
         )
@@ -49,7 +53,9 @@ def create_invitation(request, data: InvitationCreateRequest):
         ).first()
 
         if existing_invitation:
-            return 400, Message(message="У этого игрока уже есть активное приглашение")
+            return 400, Message(
+                message="У этого игрока уже есть активное приглашение"
+            )
 
         # Создаем приглашение
         invitation = Invitation.objects.create(
@@ -87,7 +93,9 @@ def create_invitation(request, data: InvitationCreateRequest):
         )
 
     except Exception as e:
-        return 400, Message(message=f"Ошибка при создании приглашения: {str(e)}")
+        return 400, Message(
+            message=f"Ошибка при создании приглашения: {str(e)}"
+        )
 
 
 @router.post(
@@ -164,7 +172,9 @@ def accept_invitation(request, data: InvitationAcceptRequest):
         return 200, Message(message="Вы успешно присоединились к кампании")
 
     except Exception as e:
-        return 400, Message(message=f"Ошибка при принятии приглашения: {str(e)}")
+        return 400, Message(
+            message=f"Ошибка при принятии приглашения: {str(e)}"
+        )
 
 
 @router.get("/pending/{telegram_id}", response=List[InvitationResponse])

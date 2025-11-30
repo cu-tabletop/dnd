@@ -54,14 +54,18 @@ class RealDnDApiClient:
                         return await response.json()
                     elif response.status == 400:
                         error_data = await response.json()
-                        raise ValidationError(f"Ошибка валидации: {error_data}")
+                        raise ValidationError(
+                            f"Ошибка валидации: {error_data}"
+                        )
                     elif response.status == 403:
                         raise ForbiddenError("Доступ запрещен")
                     elif response.status == 404:
                         raise NotFoundError("Объект не найден")
                     else:
                         error_text = await response.text()
-                        logger.error(f"API error {response.status}: {error_text}")
+                        logger.error(
+                            f"API error {response.status}: {error_text}"
+                        )
                         raise ApiError(f"Ошибка API: {response.status}")
         except aiohttp.ClientError as e:
             logger.error(f"Network error: {e}")
@@ -126,7 +130,10 @@ class RealDnDApiClient:
         result = await self._make_request(
             "POST",
             "/api/invitations/accept",
-            json={"invitation_token": invitation_token, "character_id": character_id},
+            json={
+                "invitation_token": invitation_token,
+                "character_id": character_id,
+            },
         )
         return Message(**result)
 
@@ -174,7 +181,9 @@ class RealDnDApiClient:
             pass
         return characters
 
-    async def get_character(self, character_id: int) -> Optional[GetCharacterResponse]:
+    async def get_character(
+        self, character_id: int
+    ) -> Optional[GetCharacterResponse]:
         result = await self._make_request(
             "GET", "/api/character/get/", params={"char_id": character_id}
         )
@@ -211,12 +220,18 @@ class RealDnDApiClient:
         result = await self._make_request(
             "POST",
             "/api/character/post/",
-            json={"owner_id": owner_id, "campaign_id": campaign_id, "data": data},
+            json={
+                "owner_id": owner_id,
+                "campaign_id": campaign_id,
+                "data": data,
+            },
         )
         return UploadCharacterResponse(**result)
 
     # === INVENTORY METHODS ===
-    async def get_character_inventory(self, character_id: int) -> list[InventoryItem]:
+    async def get_character_inventory(
+        self, character_id: int
+    ) -> list[InventoryItem]:
         character = await self.get_character(character_id)
         if not character:
             return []
@@ -282,9 +297,9 @@ class RealDnDApiClient:
             current_data = character.data
             inventory = current_data.get("inventory", [])
 
-            updated_item = [item for item in inventory if item.get("id", 0) == item_id][
-                0
-            ]
+            updated_item = [
+                item for item in inventory if item.get("id", 0) == item_id
+            ][0]
             updated_item.update(update_data.model_dump())
 
             inventory = [
@@ -319,7 +334,9 @@ class RealDnDApiClient:
             current_data = character.data
             inventory = current_data.get("inventory", [])
 
-            inventory = [item for item in inventory if item.get("id", 0) != item_id]
+            inventory = [
+                item for item in inventory if item.get("id", 0) != item_id
+            ]
 
             updated_data = {**current_data, "inventory": inventory}
             result = await self.update_character(character_id, updated_data)
@@ -327,7 +344,9 @@ class RealDnDApiClient:
             if isinstance(result, ErrorResponse):
                 return result
 
-            return DeleteInventoryItemResponse(message="Предмет успешно удалён")
+            return DeleteInventoryItemResponse(
+                message="Предмет успешно удалён"
+            )
         except Exception as e:
             return ErrorResponse(error=str(e))
 
