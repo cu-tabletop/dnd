@@ -1,13 +1,16 @@
 import logging
-import uuid
 
 import tortoise.exceptions
 from aiogram import Router
 from aiogram.filters import CommandObject, CommandStart
-from aiogram.types import Message
-from aiogram_dialog import DialogManager
+from aiogram.types import Message, CallbackQuery
+from aiogram_dialog import DialogManager, Dialog, Window
+from aiogram_dialog.widgets.kbd import Column, Button
+from aiogram_dialog.widgets.text import Const
 
 from db.models import Invite, User
+from states.start_simple import StartSimple
+from states.upload_character import UploadCharacter
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -37,4 +40,30 @@ async def start_args(message: Message, command: CommandObject, dialog_manager: D
 
 @router.message(CommandStart(deep_link=False))
 async def start_simple(message: Message, dialog_manager: DialogManager, user: User):
-    await message.reply("обычный /start")
+    await dialog_manager.start(StartSimple.simple)
+
+
+async def on_academy(c: CallbackQuery, b: Button, m: DialogManager):
+    user: User = m.middleware_data["user"]
+    if user.data is None:
+        await m.start(UploadCharacter.upload, data={"source": "user"})
+        return
+    await c.answer("Да, вы участвуете в академии")
+
+
+async def on_other(c: CallbackQuery, b: Button, m: DialogManager): ...
+
+
+router.include_router(
+    Dialog(
+        Window(
+            Const("Обычный /start"),
+            Column(
+                Button(Const("Академия"), id="academy", on_click=on_academy),
+                Button(Const("Другие игры"), id="other_games", on_click=on_other),
+                # Button(Const("Ближайшие встречи"), id="meetings", on_click=...),
+            ),
+            state=StartSimple.simple,
+        )
+    )
+)
