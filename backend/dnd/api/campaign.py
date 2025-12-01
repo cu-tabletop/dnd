@@ -1,10 +1,11 @@
 import base64
 import logging
 from io import BytesIO
+import os
 
 from PIL import Image as PILImage
 from django.core.files.base import ContentFile
-from django.http import HttpRequest
+from django.http import HttpRequest, Http404
 from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
@@ -16,6 +17,7 @@ from dnd.schemas import (
     CampaignEditPermissions,
     CampaignModelSchema,
     CreateCampaignRequest,
+    UpdateCampaignRequest,
     ForbiddenError,
     Message,
     NotFoundError,
@@ -39,7 +41,13 @@ def create_campaign_api(
     campaign_request: CreateCampaignRequest,
 ):
     user_id = campaign_request.telegram_id
-    user_obj = get_object_or_404(Player, telegram_id=user_id)
+    try:
+        user_obj = get_object_or_404(Player, telegram_id=user_id)
+    except Http404 as e:
+        if os.getenv("DEBUG", "true").lower() in ("true", "t"):
+            user_obj = Player.objects.create(telegram_id=user_id)
+        else:
+            raise e
 
     campaign_title = campaign_request.title
 
@@ -49,12 +57,13 @@ def create_campaign_api(
     )
 
     if campaign_request.icon:
-        decoded_icon = base64.b64decode(campaign_request.icon)
-        image = PILImage.open(BytesIO(decoded_icon))
-        buffer = BytesIO()
-        image.save(buffer, format="PNG")
-        buffer.seek(0)
-        campaign_obj.icon = ContentFile(buffer.read(), f"{campaign_title}.png")
+        campaign_obj.icon = campaign_request.icon  # tgmedia_id
+        # decoded_icon = base64.b64decode(campaign_request.icon)
+        # image = PILImage.open(BytesIO(decoded_icon))
+        # buffer = BytesIO()
+        # image.save(buffer, format="PNG")
+        # buffer.seek(0)
+        # campaign_obj.icon = ContentFile(buffer.read(), f"{campaign_title}.png")
 
     if campaign_request.description:
         campaign_obj.description = campaign_request.description
@@ -67,6 +76,55 @@ def create_campaign_api(
         status=2,
     )
     return 201, Message(message="created")
+
+
+@router.patch(
+    "update/",
+    response={
+        200: Message,
+        403: ForbiddenError,
+        404: NotFoundError,
+    },
+)
+def update_campaign_api(
+    request: HttpRequest,
+    campaign_request: UpdateCampaignRequest,
+):
+    user_id = campaign_request.telegram_id
+    user_obj = get_object_or_404(
+        Player, telegram_id=user_id
+    )  # в последствие для проверки прав
+
+    campaign_id = campaign_request.campaign_id
+    campaign_obj = get_object_or_404(Campaign, id=campaign_id)
+
+    membership = get_object_or_404(
+        CampaignMembership, user=user_obj, campaign=campaign_obj
+    )
+
+    if membership.status < 1:  # ВОПРОС: Какой минимальный статус нужен?
+        return 403, ForbiddenError(
+            message="Недостаточно прав для редактирования кампании"
+        )
+
+    if campaign_request.title:
+        campaign_obj.title = campaign_request.title
+
+    if campaign_request.icon:
+        campaign_obj.icon = campaign_request.icon  # tgmedia_id
+        # decoded_icon = base64.b64decode(campaign_request.icon)
+        # image = PILImage.open(BytesIO(decoded_icon))
+        # buffer = BytesIO()
+        # image.save(buffer, format="PNG")
+        # buffer.seek(0)
+        # campaign_obj.icon = ContentFile(buffer.read(), f"{campaign_title}.png")
+
+    if campaign_request.description:
+        campaign_obj.description = campaign_request.description
+
+    campaign_obj.save()
+
+    return 200, Message(message="updated")
 
 
 @router.get(

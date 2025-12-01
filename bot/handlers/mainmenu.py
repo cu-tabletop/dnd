@@ -105,21 +105,20 @@ async def campaigns_detailed_getter(
                 "id": campaign.get("id"),
                 "title": campaign.get("title", "Unnamed Campaign"),
                 "description": campaign.get("description", ""),
-                "display_title": f"{campaign.get('title', 'Unnamed Campaign')}"[
-                    :35
-                ]
-                + "..."
-                if len(campaign.get("title", "")) > 35
-                else f"{campaign.get('title', 'Unnamed Campaign')}",
+                "display_title": (
+                    f"{campaign.get('title', 'Unnamed Campaign')}"[:35] + "..."
+                    if len(campaign.get("title", "")) > 35
+                    else f"{campaign.get('title', 'Unnamed Campaign')}"
+                ),
             }
         )
 
     return {
         "campaigns": display_campaigns,
         "has_campaigns": bool(campaigns),
-        "no_campaigns_text": "У вас пока нет доступных кампаний"
-        if not campaigns
-        else "",
+        "no_campaigns_text": (
+            "У вас пока нет доступных кампаний" if not campaigns else ""
+        ),
         "user_id": telegram_id,
     }
 

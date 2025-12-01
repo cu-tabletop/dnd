@@ -1,7 +1,7 @@
 from typing import Set
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -19,5 +19,10 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str
     REDIS_DB: int = Field(alias="ADMIN_REDIS_DB")
 
+    # Конфигурация модели - ИСПРАВЛЕННАЯ ВЕРСИЯ
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
-settings = Settings()
+
+settings = Settings()  # type: ignore

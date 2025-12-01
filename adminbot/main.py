@@ -21,18 +21,27 @@ logger = logging.getLogger(__name__)
 HANDLERS_PACKAGE = "handlers"
 HANDLERS_PATH = Path(__file__).parent / "handlers"
 
+DIALOGS_PACKAGE = "dialogs"
+DIALOGS_PATH = Path(__file__).parent / "dialogs"
+
 
 def register_all_middlewares(dp: Dispatcher) -> None:
     dp.message.middleware.register(RegisterMiddleware())
 
 
 def _iter_handler_modules() -> Iterable[ModuleType]:
-    for module in HANDLERS_PATH.rglob("*.py"):
-        if module.name == "__init__.py":
-            continue
-        relative = module.relative_to(HANDLERS_PATH).with_suffix("")
-        dotted = ".".join((HANDLERS_PACKAGE, *relative.parts))
-        yield importlib.import_module(dotted)
+    for path, package in (
+        (HANDLERS_PATH, HANDLERS_PACKAGE),
+        (DIALOGS_PATH, DIALOGS_PACKAGE),
+    ):
+        for module in path.rglob("*.py"):
+            if module.name == "__init__.py":
+                continue
+            relative = module.relative_to(path).with_suffix("")
+            dotted = ".".join((package, *relative.parts))
+            logger.info(f"included {dotted}")
+            import_module = importlib.import_module(dotted)
+            yield import_module
 
 
 def register_all_handlers(dp: Dispatcher) -> None:
@@ -41,6 +50,7 @@ def register_all_handlers(dp: Dispatcher) -> None:
         router = getattr(module, "router", None)
         if router is None:
             continue
+        logger.info(f"\tadded: {router}")
         routers.append(router)
 
     if routers:

@@ -12,6 +12,14 @@ class CreateCampaignRequest(Schema):
     description: str | None = None
 
 
+class UpdateCampaignRequest(Schema):
+    telegram_id: int
+    campaign_id: int
+    title: str | None = None
+    icon: str | None = None
+    description: str | None = None
+
+
 class CampaignModelSchema(ModelSchema):
     class Meta:
         model = Campaign

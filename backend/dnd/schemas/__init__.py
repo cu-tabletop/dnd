@@ -1,6 +1,7 @@
 from .campaign import (
     CampaignModelSchema,
     CreateCampaignRequest,
+    UpdateCampaignRequest,
     AddToCampaignRequest,
     CampaignEditPermissions,
 )
