@@ -1,4 +1,4 @@
-name: Ruff format
+name: Ruff format & check
 
 on:
   workflow_dispatch:
