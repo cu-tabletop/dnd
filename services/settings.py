@@ -1,7 +1,7 @@
 from typing import Set, Any, Optional
 from zoneinfo import ZoneInfo
 
-from pydantic import computed_field
+from pydantic import computed_field, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     DB_HOST: str = "db"
     DB_PORT: int = 5432
     DB_NAME: str = "db"
-    DB_USER: str = "admin"
-    DB_PASSWORD: str = "admin"
+    DB_USER: str = Field(default="admin", alias="POSTGRES_USER")
+    DB_PASSWORD: str = Field(default="admin", alias="POSTGRES_PASSWORD")
 
     # ^ Redis
     REDIS_HOST: str = "redis"
@@ -34,18 +34,12 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def postgres_dsn(self) -> str:
-        return (
-            f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@"
-            f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-        )
+        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     @computed_field
     @property
     def tortoise_db_url(self) -> str:
-        return (
-            f"postgres://{self.DB_USER}:{self.DB_PASSWORD}@"
-            f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-        )
+        return f"postgres://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     @computed_field
     @property

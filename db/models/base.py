@@ -19,7 +19,7 @@ class TimestampedModel(models.Model):
 
 
 class CharacterData(models.Model):
-    data = fields.JSONField()
+    data = fields.JSONField(null=True)
 
     class Meta:
         abstract = True
