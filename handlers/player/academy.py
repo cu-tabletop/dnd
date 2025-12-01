@@ -16,6 +16,7 @@ from db.models import Invite, User
 from services.character import CharacterData, parse_character_data
 from services.character_data import character_preview_getter
 from states.academy import Academy
+from states.academy_campaigns import AcademyCampaigns
 from states.rating import AcademyRating
 from states.start_simple import StartSimple
 from states.upload_character import UploadCharacter
@@ -35,7 +36,8 @@ async def on_rating(c: CallbackQuery, b: Button, m: DialogManager):
     await m.start(AcademyRating.rating)
 
 
-async def on_campaigns(c: CallbackQuery, b: Button, m: DialogManager): ...
+async def on_campaigns(c: CallbackQuery, b: Button, m: DialogManager):
+    await m.start(AcademyCampaigns.campaigns)
 
 
 async def character_data_getter(dialog_manager: DialogManager, **kwargs) -> dict:

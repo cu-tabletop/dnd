@@ -6,7 +6,7 @@ from aiogram import Router
 from aiogram.enums import ContentType
 from aiogram.filters import CommandObject, CommandStart
 from aiogram.types import Message, CallbackQuery
-from aiogram_dialog import DialogManager, Dialog, Window, ShowMode
+from aiogram_dialog import DialogManager, Dialog, Window
 from aiogram_dialog.api.entities import MediaAttachment
 from aiogram_dialog.widgets.kbd import Column, Button, Cancel, ScrollingGroup, Select, Url, Back
 from aiogram_dialog.widgets.media import DynamicMedia
@@ -25,33 +25,24 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-async def rating_getter(dialog_manager: DialogManager, **kwargs):
-    return {"top": await User.all().order_by("-rating")}
+async def preview_getter(dialog_manager: DialogManager, **kwargs):
+    user = await User.get(id=dialog_manager.start_data["user_id"])
+    data = json.loads(user.data["data"])
 
-
-async def on_preview(c: CallbackQuery, b: Button, m: DialogManager, user_id: int):
-    await m.start(PlayerPreview.preview, data={"user_id": user_id})
-
+    return {
+        "profile_link": f"tg://user?id={user.id}",
+        **character_preview_getter(user, data),
+    }
 
 router.include_router(
     Dialog(
         Window(
-            Const("Вот топ по рейтингу"),
-            ScrollingGroup(
-                Select(
-                    Format("@{item.username} - {item.rating}"),
-                    id="preview",
-                    items="top",
-                    item_id_getter=lambda x: x.id,
-                    on_click=on_preview,
-                ),
-                hide_on_single_page=True,
-                height=5,
-                id="top",
-            ),
+            DynamicMedia("avatar", when="avatar"),
+            Format("{character_data_preview}", when="character_data_preview"),
+            Url(Const("Перейти в профиль"), Format("{profile_link}")),
             Cancel(Const("Назад")),
-            getter=rating_getter,
-            state=AcademyRating.rating,
-        ),
+            getter=preview_getter,
+            state=PlayerPreview.preview,
+        )
     )
 )
