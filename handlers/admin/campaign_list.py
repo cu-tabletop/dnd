@@ -1,7 +1,7 @@
 import logging
 from aiogram import Router
 from aiogram_dialog import Dialog, Window, DialogManager
-from aiogram_dialog.widgets.kbd import Button, Select, ScrollingGroup, SwitchTo
+from aiogram_dialog.widgets.kbd import Button, Select, ScrollingGroup, Start
 from aiogram_dialog.widgets.text import Const, Format
 from aiogram.types import CallbackQuery
 
@@ -14,10 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 # === Гетеры ===
-async def get_campaigns_data(manager: DialogManager, **kwargs):
-    user: User = manager.middleware_data["user"]
+async def get_campaigns_data(dialog_manager: DialogManager, **kwargs):
+    user: User = dialog_manager.middleware_data["user"]
     return {
-        "campaigns": await Participation.filter(user=user).prefetch_related("campaign").all(),
+        "campaigns": await Participation.filter(user=user)
+        .prefetch_related("campaign")
+        .all(),
         "is_admin": user.admin,
     }
 
@@ -26,11 +28,13 @@ async def get_campaigns_data(manager: DialogManager, **kwargs):
 async def on_campaign_selected(
     mes: CallbackQuery,
     wid: Select,
-    manager: DialogManager,
+    dialog_manager: DialogManager,
     participation_id,
 ):
-    participation: Participation = await Participation.get(id=participation_id).prefetch_related("campaign")
-    await manager.start(
+    participation: Participation = await Participation.get(
+        id=participation_id
+    ).prefetch_related("campaign")
+    await dialog_manager.start(
         states.CampaignManage.main,
         data={
             "campaign_id": participation.campaign.id,
@@ -56,9 +60,9 @@ campaign_list_window = Window(
     ),
     # Const(
     #     "У вас пока нет доступных партий",
-    #     when=lambda data, widget, manager: not data.get("has_campaigns", False),
+    #     when=lambda data, widget, dialog_manager: not data.get("has_campaigns", False),
     # ),
-    SwitchTo(
+    Start(
         Const("➕ Создать новую"),
         id="create_campaign",
         state=states.CreateCampaign.select_title,
@@ -66,7 +70,9 @@ campaign_list_window = Window(
     Button(
         Const("➕ Создать новую (Для академии)"),
         id="create_verified_campaign",
-        on_click=lambda c, b, d: d.start(states.CreateCampaign.select_title, data={"verified": True}),
+        on_click=lambda c, b, d: d.start(
+            states.CreateCampaign.select_title, data={"verified": True}
+        ),
     ),
     state=states.CampaignList.main,
     getter=get_campaigns_data,

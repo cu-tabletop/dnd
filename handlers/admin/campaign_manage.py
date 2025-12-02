@@ -16,13 +16,18 @@ logger = logging.getLogger(__name__)
 
 
 # === Гетеры ===
-async def get_campaign_manage_data(manager: DialogManager, **kwargs):
-    if "campaign_id" not in manager.dialog_data:
-        if isinstance(manager.start_data, dict):
-            manager.dialog_data["campaign_id"] = manager.start_data.get("campaign_id", 0)
-            manager.dialog_data["participation_id"] = manager.start_data.get("participation_id", 0)
+async def get_campaign_manage_data(dialog_manager: DialogManager, **kwargs):
+    if "campaign_id" not in dialog_manager.dialog_data:
+        if isinstance(dialog_manager.start_data, dict):
 
-    campaign_id = manager.dialog_data.get("campaign_id", 0)
+            dialog_manager.dialog_data["campaign_id"] = dialog_manager.start_data.get(
+                "campaign_id", 0
+            )
+            dialog_manager.dialog_data["participation_id"] = (
+                dialog_manager.start_data.get("participation_id", 0)
+            )
+
+    campaign_id = dialog_manager.dialog_data.get("campaign_id", 0)
 
     campaign: Campaign = await Campaign.get(id=campaign_id)
 
@@ -37,33 +42,34 @@ async def get_campaign_manage_data(manager: DialogManager, **kwargs):
     }
 
 
-async def update_data(_, result, dialog_manager: DialogManager, **kwargs):
-    logger.debug(f"Результат: {result}")
-    dialog_manager.dialog_data["selected_campaign"].update(result["update_data"])
-
-
 # === Кнопки ===
-async def on_edit_info(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
-    selected_campaign = dialog_manager.dialog_data.get("selected_campaign", {})
+async def on_edit_info(
+    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+):
+    campaign_id = dialog_manager.dialog_data.get("campaign_id", {})
     await dialog_manager.start(
         states.EditCampaignInfo.select_field,
-        data={"selected_campaign": selected_campaign},
+        data={"campaign_id": campaign_id},
     )
 
 
-async def on_manage_characters(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
-    selected_campaign = dialog_manager.dialog_data.get("selected_campaign", {})
+async def on_manage_characters(
+    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+):
+    campaign_id = dialog_manager.dialog_data.get("campaign_id", {})
     await dialog_manager.start(
-        states.ManageCharacters.character_selection,
-        data={"selected_campaign": selected_campaign},
+        states.ManageCharacters.character_menu,
+        data={"campaign_id": campaign_id},
     )
 
 
-async def on_permissions(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
-    selected_campaign = dialog_manager.dialog_data.get("selected_campaign", {})
+async def on_permissions(
+    callback: CallbackQuery, button: Button, dialog_manager: DialogManager
+):
+    campaign_id = dialog_manager.dialog_data.get("campaign_id", {})
     await dialog_manager.start(
         states.EditPermissions.main,
-        data={"selected_campaign": selected_campaign},
+        data={"campaign_id": campaign_id},
     )
 
 
@@ -86,11 +92,14 @@ async def on_permissions(callback: CallbackQuery, button: Button, dialog_manager
 # === Окна ===
 campaign_manage_window = Window(
     DynamicMedia("icon"),
-    Format("🎓 Управление группой: {campaign_title}\n\nОписание: {campaign_description}\nВыберите действие:"),
+    Format(
+        "🎓 Управление: {campaign_title}\n\nОписание: {campaign_description}\n"
+        "Выберите действие:"
+    ),
     Group(
         Button(
             Const("🤝 Встречи"),
-            id="edit_info",
+            id="meetings",
         ),
         Button(
             Const("✏️ Редактировать информацию"),
@@ -115,6 +124,6 @@ campaign_manage_window = Window(
 )
 
 # === Создание диалога и роутера ===
-dialog = Dialog(campaign_manage_window, on_process_result=update_data)
+dialog = Dialog(campaign_manage_window)
 router = Router()
 router.include_router(dialog)

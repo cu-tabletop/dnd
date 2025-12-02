@@ -37,36 +37,38 @@ async def get_confirm_data(dialog_manager: DialogManager, **kwargs):
 async def on_title_entered(
     mes: Message,
     wid: ManagedTextInput,
-    manager: DialogManager,
+    dialog_manager: DialogManager,
     text: str,
 ):
     if len(text) > 255:
         await mes.answer("Максимум 255 символов")
         return
-    manager.dialog_data["title"] = text
-    await manager.next()
+    dialog_manager.dialog_data["title"] = text
+    await dialog_manager.next()
 
 
 async def on_description_entered(
     mes: Message,
     wid: ManagedTextInput,
-    manager: DialogManager,
+    dialog_manager: DialogManager,
     text: str,
 ):
     if len(text) > 1023:
         mes.answer("Максимум 1023 символа, можно пропустить")
         return
-    manager.dialog_data["description"] = text
-    await manager.next()
+    dialog_manager.dialog_data["description"] = text
+    await dialog_manager.next()
 
 
-async def on_icon_entered(mes: Message, wid: MessageInput, manager: DialogManager):
+async def on_icon_entered(
+    mes: Message, wid: MessageInput, dialog_manager: DialogManager
+):
     if mes.photo:
         try:
             photo = mes.photo[-1]
-            manager.dialog_data["icon"] = photo.file_id
+            dialog_manager.dialog_data["icon"] = photo.file_id
 
-            await manager.next()
+            await dialog_manager.next()
         except Exception as e:
             logger.error(f"Error processing photo: {e}")
             await mes.answer("❌ Ошибка при обработке изображения")
@@ -74,19 +76,19 @@ async def on_icon_entered(mes: Message, wid: MessageInput, manager: DialogManage
         await mes.answer("❌ Пожалуйста, отправьте изображение")
 
 
-async def on_confirm(mes: CallbackQuery, button: Button, manager: DialogManager):
-    campaign_data = manager.dialog_data
-    user: User = manager.middleware_data["user"]
+async def on_confirm(mes: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    campaign_data = dialog_manager.dialog_data
+    user: User = dialog_manager.middleware_data["user"]
 
     try:
         verified = False
-        if isinstance(manager.start_data, dict):
-            verified = manager.start_data.get("verified", False)
+        if isinstance(dialog_manager.start_data, dict):
+            verified = dialog_manager.start_data.get("verified", False)
 
         new_campaign: Campaign = await Campaign.create(
             title=campaign_data.get("title", ""),
             description=campaign_data.get("description", ""),
-            icon=campaign_data.get("icon"),
+            icon=campaign_data.get("icon", ""),
             verified=verified,
         )
 
@@ -96,7 +98,7 @@ async def on_confirm(mes: CallbackQuery, button: Button, manager: DialogManager)
             f"✅ {new_campaign.title} успешно создан",
             show_alert=True,
         )
-        await manager.done()
+        await dialog_manager.done()
 
     except Exception as e:
         logger.error(f"Error creating campaign: {e}")

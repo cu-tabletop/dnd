@@ -3,7 +3,7 @@ from aiogram import Router
 from aiogram_dialog import Dialog, Window, DialogManager
 from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.api.entities import MediaAttachment, MediaId
-from aiogram.enums import ContentType
+from aiogram.enums import ContentType, ParseMode
 from aiogram_dialog.widgets.kbd import Button, Cancel, SwitchTo, Column
 from aiogram_dialog.widgets.text import Const, Format, Multi
 from aiogram_dialog.widgets.input import TextInput, MessageInput, ManagedTextInput
@@ -17,77 +17,93 @@ logger = logging.getLogger(__name__)
 
 
 # === Гетеры ===
-async def get_campaign_edit_data(manager: DialogManager, **kwargs):
-    if "campaign_id" not in manager.dialog_data:
-        if isinstance(manager.start_data, dict):
-            manager.dialog_data["campaign_id"] = manager.start_data.get("campaign_id", 0)
-            manager.dialog_data["participation_id"] = manager.start_data.get("participation_id", 0)
+async def get_campaign_edit_data(dialog_manager: DialogManager, **kwargs):
+    logger.debug(f"Переданные данные в edit_campaign: {dialog_manager.start_data}")
+    if "campaign_id" not in dialog_manager.dialog_data:
+        if isinstance(dialog_manager.start_data, dict):
 
-    campaign = await Campaign.get(manager.dialog_data.get("campaign_id", 0))
+            dialog_manager.dialog_data["campaign_id"] = dialog_manager.start_data.get(
+                "campaign_id", 0
+            )
+            dialog_manager.dialog_data["participation_id"] = (
+                dialog_manager.start_data.get("participation_id", 0)
+            )
 
-    if "new_data" not in manager.dialog_data:
-        manager.dialog_data["new_data"] = dict()
+    campaign = await Campaign.get(id=dialog_manager.dialog_data.get("campaign_id", 0))
+
+    if "new_data" not in dialog_manager.dialog_data:
+        dialog_manager.dialog_data["new_data"] = dict()
 
     icon = None
-    if file_id := manager.dialog_data["new_data"].get("icon", campaign.icon):
+    if file_id := dialog_manager.dialog_data["new_data"].get("icon", campaign.icon):
         icon = MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(file_id))
 
+    logger.debug(f"Значение icon: {icon}")
+
     return {
-        "campaign_title": manager.dialog_data["new_data"].get("title", campaign.title),
-        "campaign_description": manager.dialog_data["new_data"].get("describe", campaign.describe),
+        "campaign_title": dialog_manager.dialog_data["new_data"].get(
+            "title", campaign.title
+        ),
+        "campaign_description": dialog_manager.dialog_data["new_data"].get(
+            "description", campaign.description
+        ),
         "icon": icon,
     }
 
 
 # === Кнопки ===
-async def on_field_selected(mes: CallbackQuery, wid: Button, manager: DialogManager):
+async def on_field_selected(
+    mes: CallbackQuery, wid: Button, dialog_manager: DialogManager
+):
     field_map = {
         "title": campaign_states.EditCampaignInfo.edit_title,
         "description": campaign_states.EditCampaignInfo.edit_description,
         "icon": campaign_states.EditCampaignInfo.edit_icon,
     }
     if wid.widget_id in field_map:
-        await manager.switch_to(field_map[wid.widget_id])
+        await dialog_manager.switch_to(field_map[wid.widget_id])
 
 
 async def on_title_edited(
     mes: Message,
     wid: ManagedTextInput,
-    manager: DialogManager,
+    dialog_manager: DialogManager,
     text: str,
 ):
     if len(text) > 255:
         await mes.answer("Название слишком длинное (максимум 255 символов)")
         return
 
-    manager.dialog_data["new_data"]["title"] = text
+    dialog_manager.dialog_data["new_data"]["title"] = text
 
-    await manager.switch_to(campaign_states.EditCampaignInfo.confirm)
+    await dialog_manager.switch_to(campaign_states.EditCampaignInfo.confirm)
 
 
 async def on_description_edited(
     mes: Message,
     wid: ManagedTextInput,
-    manager: DialogManager,
+    dialog_manager: DialogManager,
     text: str,
 ):
     if len(text) > 1023:
         await mes.answer("Описание слишком длинное (максимум 1023 символа)")
         return
 
-    manager.dialog_data["new_data"]["description"] = text
+    dialog_manager.dialog_data["new_data"]["description"] = text
 
-    await manager.switch_to(campaign_states.EditCampaignInfo.confirm)
+    await dialog_manager.switch_to(campaign_states.EditCampaignInfo.confirm)
 
 
-async def on_icon_entered(mes: Message, wid: MessageInput, manager: DialogManager):
+async def on_icon_entered(
+    mes: Message, wid: MessageInput, dialog_manager: DialogManager
+):
     if mes.photo:
         try:
             photo = mes.photo[-1]
 
-            manager.dialog_data["new_data"]["icon"] = photo.file_id
+            dialog_manager.dialog_data["new_data"]["icon"] = photo.file_id
 
-            await manager.switch_to(campaign_states.EditCampaignInfo.confirm)
+            await dialog_manager.switch_to(campaign_states.EditCampaignInfo.confirm)
         except Exception as e:
             logger.error(f"Error processing photo: {e}")
             await mes.answer("❌ Ошибка при обработке изображения")
@@ -95,15 +111,21 @@ async def on_icon_entered(mes: Message, wid: MessageInput, manager: DialogManage
         await mes.answer("❌ Пожалуйста, отправьте изображение")
 
 
-async def on_edit_confirm(mes: CallbackQuery, wid: Button, manager: DialogManager):
+async def on_edit_confirm(
+    mes: CallbackQuery, wid: Button, dialog_manager: DialogManager
+):
     try:
-        campaign = await Campaign.get(manager.dialog_data.get("campaign_id", 0))
-        new_data = manager.dialog_data.get("new_data", {})
+        campaign = await Campaign.get(
+            id=dialog_manager.dialog_data.get("campaign_id", 0)
+        )
+        new_data = dialog_manager.dialog_data.get("new_data", {})
 
         campaign = await Campaign.update_from_dict(campaign, new_data)
 
+        await campaign.save()
+
         await mes.answer(f"✅ {campaign.title} успешно обновлён", show_alert=True)
-        await manager.done()
+        await dialog_manager.done()
 
     except Exception as e:
         logger.error(f"Error creating campaign: {e}")
@@ -115,7 +137,7 @@ select_field_window = Window(
     DynamicMedia("icon"),
     Multi(
         Format("✏️ Редактирование: {campaign_title}"),
-        Format("{campaign_description}\n"),
+        Format("📜 Описание: {campaign_description}"),
         Const("Выберите что хотите изменить:"),
     ),
     Column(
@@ -130,6 +152,7 @@ select_field_window = Window(
     Cancel(Const("⬅️ Назад")),
     state=campaign_states.EditCampaignInfo.select_field,
     getter=get_campaign_edit_data,
+    # parse_mode=ParseMode.MARKDOWN_V2,
 )
 
 edit_title_window = Window(
@@ -170,11 +193,13 @@ edit_icon_window = Window(
 
 confirm_edit_window = Window(
     DynamicMedia("icon"),
-    Format(
-        "✅ Проверьте изменения:\n\n"
-        "📝 Название: {campaign_title}\n"
-        "📄 Описание: {campaign_description}\n"
-        "Сохранить изменения?"
+    Multi(
+        Format(
+            "✅ Проверьте изменения:\n\n"
+            "📝 Название: {campaign_title}\n"
+            "📄 Описание: {campaign_description}\n"
+            "Сохранить изменения?"
+        )
     ),
     Button(Const("✅ Сохранить"), id="save_changes", on_click=on_edit_confirm),
     SwitchTo(
