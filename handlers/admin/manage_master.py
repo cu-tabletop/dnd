@@ -1,16 +1,18 @@
 import logging
 from uuid import UUID
+
 from aiogram import Router
-from aiogram_dialog import Dialog, Window, DialogManager
+from aiogram.types import CallbackQuery
+from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.widgets.kbd import (
     Button,
-    SwitchTo,
     Cancel,
     ScrollingGroup,
     Select,
+    SwitchTo,
 )
 from aiogram_dialog.widgets.text import Const, Format, Multi
-from aiogram.types import CallbackQuery
+from tortoise.exceptions import OperationalError
 
 from db.models.campaign import Campaign
 from db.models.participation import Participation
@@ -18,15 +20,14 @@ from services.role import Role
 
 from . import states
 
-logger = logging.Logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # === ГЕТЕРЫ ===
 async def get_permissions_data(dialog_manager: DialogManager, **kwargs):
-    if "campaign_id" not in dialog_manager.dialog_data:
-        if isinstance(dialog_manager.start_data, dict):
-            dialog_manager.dialog_data["campaign_id"] = dialog_manager.start_data.get("campaign_id", 0)
-            dialog_manager.dialog_data["participation_id"] = dialog_manager.start_data.get("participation_id", 0)
+    if "campaign_id" not in dialog_manager.dialog_data and isinstance(dialog_manager.start_data, dict):
+        dialog_manager.dialog_data["campaign_id"] = dialog_manager.start_data.get("campaign_id", 0)
+        dialog_manager.dialog_data["participation_id"] = dialog_manager.start_data.get("participation_id", 0)
 
     campaign = await Campaign.get(id=dialog_manager.dialog_data.get("campaign_id", 0))
 
@@ -67,12 +68,12 @@ async def on_remove_user(callback: CallbackQuery, button: Button, dialog_manager
             show_alert=True,
         )
         await dialog_manager.switch_to(states.EditPermissions.main)
-    except Exception as e:
-        logger.error(f"Error processing delete participation: {e}")
+    except OperationalError as e:
+        logger.exception("Error processing delete participation", exc_info=e)
         await callback.answer("❌ Ошибка при удалении", show_alert=True)
 
 
-# === ОКНА ===
+# === Окна ===
 permissions_main_window = Window(
     Multi(
         Format("🧙‍♂️ Управление мастерами: {campaign.title}\n"),
@@ -113,7 +114,7 @@ select_permission_window = Window(
 )
 
 
-# === СОЗДАНИЕ ДИАЛОГА И РОУТЕРА ===
+# === Создание диалога и роутера ===
 permissions_dialog = Dialog(
     permissions_main_window,
     select_permission_window,

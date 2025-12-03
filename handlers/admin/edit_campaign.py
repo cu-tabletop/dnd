@@ -1,13 +1,15 @@
 import logging
+
 from aiogram import Router
-from aiogram_dialog import Dialog, Window, DialogManager
-from aiogram_dialog.widgets.media import DynamicMedia
-from aiogram_dialog.api.entities import MediaAttachment, MediaId
 from aiogram.enums import ContentType
-from aiogram_dialog.widgets.kbd import Button, Cancel, SwitchTo, Column
-from aiogram_dialog.widgets.text import Const, Format, Multi
-from aiogram_dialog.widgets.input import TextInput, MessageInput, ManagedTextInput
 from aiogram.types import CallbackQuery, Message
+from aiogram_dialog import Dialog, DialogManager, Window
+from aiogram_dialog.api.entities import MediaAttachment, MediaId
+from aiogram_dialog.widgets.input import ManagedTextInput, MessageInput, TextInput
+from aiogram_dialog.widgets.kbd import Button, Cancel, Column, SwitchTo
+from aiogram_dialog.widgets.media import DynamicMedia
+from aiogram_dialog.widgets.text import Const, Format, Multi
+from tortoise.exceptions import ConfigurationError, OperationalError
 
 from db.models.campaign import Campaign
 from db.models.participation import Participation
@@ -17,26 +19,28 @@ from . import states
 
 logger = logging.getLogger(__name__)
 
+# === Константы ===
+MAX_TITLE_LEN = 255
+MAX_DESCRIPTION_LEN = 1023
+
 
 # === Гетеры ===
 async def get_campaign_edit_data(dialog_manager: DialogManager, **kwargs):
-    logger.debug(f"Переданные данные в edit_campaign: {dialog_manager.start_data}")
-    if "campaign_id" not in dialog_manager.dialog_data:
-        if isinstance(dialog_manager.start_data, dict):
-            dialog_manager.dialog_data["campaign_id"] = dialog_manager.start_data.get("campaign_id", 0)
-            dialog_manager.dialog_data["participation_id"] = dialog_manager.start_data.get("participation_id", 0)
+    logger.debug("Переданные данные в edit_campaign: %s", dialog_manager.start_data)
 
-    campaign = await Campaign.get(id=dialog_manager.dialog_data.get("campaign_id", 0))
-    participation = await Participation.get(id=dialog_manager.dialog_data.get("participation_id", 0))
+    if "campaign_id" not in dialog_manager.dialog_data and isinstance(dialog_manager.start_data, dict):
+        dialog_manager.dialog_data["campaign_id"] = dialog_manager.start_data["campaign_id"]
+        dialog_manager.dialog_data["participation_id"] = dialog_manager.start_data["participation_id"]
+
+    campaign = await Campaign.get(id=dialog_manager.dialog_data["campaign_id"])
+    participation = await Participation.get(id=dialog_manager.dialog_data["participation_id"])
 
     if "new_data" not in dialog_manager.dialog_data:
-        dialog_manager.dialog_data["new_data"] = dict()
+        dialog_manager.dialog_data["new_data"] = {}
 
     icon = None
     if file_id := dialog_manager.dialog_data["new_data"].get("icon", campaign.icon):
         icon = MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(file_id))
-
-    logger.debug(f"Значение icon: {icon}")
 
     return {
         "campaign_title": dialog_manager.dialog_data["new_data"].get("title", campaign.title),
@@ -64,7 +68,7 @@ async def on_title_edited(
     dialog_manager: DialogManager,
     text: str,
 ):
-    if len(text) > 255:
+    if len(text) > MAX_TITLE_LEN:
         await mes.answer("Название слишком длинное (максимум 255 символов)")
         return
 
@@ -79,7 +83,7 @@ async def on_description_edited(
     dialog_manager: DialogManager,
     text: str,
 ):
-    if len(text) > 1023:
+    if len(text) > MAX_DESCRIPTION_LEN:
         await mes.answer("Описание слишком длинное (максимум 1023 символа)")
         return
 
@@ -90,15 +94,11 @@ async def on_description_edited(
 
 async def on_icon_entered(mes: Message, wid: MessageInput, dialog_manager: DialogManager):
     if mes.photo:
-        try:
-            photo = mes.photo[-1]
+        photo = mes.photo[-1]
 
-            dialog_manager.dialog_data["new_data"]["icon"] = photo.file_id
+        dialog_manager.dialog_data["new_data"]["icon"] = photo.file_id
 
-            await dialog_manager.switch_to(states.EditCampaignInfo.confirm)
-        except Exception as e:
-            logger.error(f"Error processing photo: {e}")
-            await mes.answer("❌ Ошибка при обработке изображения")
+        await dialog_manager.switch_to(states.EditCampaignInfo.confirm)
     else:
         await mes.answer("❌ Пожалуйста, отправьте изображение")
 
@@ -115,8 +115,8 @@ async def on_edit_confirm(mes: CallbackQuery, wid: Button, dialog_manager: Dialo
         await mes.answer(f"✅ {campaign.title} успешно обновлён", show_alert=True)
         await dialog_manager.done()
 
-    except Exception as e:
-        logger.error(f"Error creating campaign: {e}")
+    except (ValueError, ConfigurationError) as e:
+        logger.exception("Error creating campaign", exc_info=e)
         await mes.answer("❌ Ошибка при обновлении", show_alert=True)
 
 
@@ -130,9 +130,9 @@ async def on_remove_campaign(callback: CallbackQuery, button: Button, dialog_man
             f"✅ Кампания {title} удалена",
             show_alert=True,
         )
-        await dialog_manager.switch_to(states.EditPermissions.main)
-    except Exception as e:
-        logger.error(f"Error processing delete campaign: {e}")
+        await dialog_manager.done({"deleted": True})
+    except OperationalError as e:
+        logger.exception("Error processing delete campaign", exc_info=e)
         await callback.answer("❌ Ошибка при удалении", show_alert=True)
 
 

@@ -1,14 +1,19 @@
 import logging
+from typing import TYPE_CHECKING
+from uuid import UUID
+
 from aiogram import Router
-from aiogram_dialog import Dialog, Window, DialogManager
-from aiogram_dialog.widgets.kbd import Button, Select, ScrollingGroup, Start
-from aiogram_dialog.widgets.text import Const, Format
 from aiogram.types import CallbackQuery
+from aiogram_dialog import Dialog, DialogManager, Window
+from aiogram_dialog.widgets.kbd import Button, ScrollingGroup, Select, Start
+from aiogram_dialog.widgets.text import Const, Format
 
 from db.models.participation import Participation
-from db.models.user import User
 
 from . import states
+
+if TYPE_CHECKING:
+    from db.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +21,8 @@ logger = logging.getLogger(__name__)
 # === Гетеры ===
 async def get_campaigns_data(dialog_manager: DialogManager, **kwargs):
     user: User = dialog_manager.middleware_data["user"]
-    return {
-        "campaigns": await Participation.filter(user=user).prefetch_related("campaign").all(),
-        "is_admin": user.admin,
-    }
+    campaigns = await Participation.filter(user=user).prefetch_related("campaign").all()
+    return {"campaigns": campaigns, "is_admin": user.admin, "has_campaigns": len(campaigns) > 0}
 
 
 # === Кнопки ===
@@ -27,7 +30,7 @@ async def on_campaign_selected(
     mes: CallbackQuery,
     wid: Select,
     dialog_manager: DialogManager,
-    participation_id,
+    participation_id: UUID,
 ):
     participation: Participation = await Participation.get(id=participation_id).prefetch_related("campaign")
     await dialog_manager.start(
@@ -42,6 +45,10 @@ async def on_campaign_selected(
 # === Окна ===
 campaign_list_window = Window(
     Const("🏰 Магическая Академия - Ваши кампейнами\n\n"),
+    Const(
+        "У вас пока нет доступных партий",
+        when=lambda data, widget, dialog_manager: not data.get("has_campaigns", False),
+    ),
     ScrollingGroup(
         Select(
             Format("{item.campaign.title}"),
@@ -49,15 +56,12 @@ campaign_list_window = Window(
             items="campaigns",
             item_id_getter=lambda x: x.id,
             on_click=on_campaign_selected,
+            type_factory=UUID,
         ),
         hide_on_single_page=True,
         height=5,
         id="campaigns",
     ),
-    # Const(
-    #     "У вас пока нет доступных партий",
-    #     when=lambda data, widget, dialog_manager: not data.get("has_campaigns", False),
-    # ),
     Start(
         Const("➕ Создать новую"),
         id="create_campaign",

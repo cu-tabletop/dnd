@@ -1,11 +1,14 @@
+from typing import TYPE_CHECKING
+
 from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from aiogram_dialog import DialogManager, StartMode
 
-from db.models.user import User
-
 from . import states
+
+if TYPE_CHECKING:
+    from db.models.user import User
 
 router = Router()
 

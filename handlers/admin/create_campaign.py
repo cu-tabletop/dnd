@@ -1,23 +1,31 @@
 import logging
+from typing import TYPE_CHECKING
 
 from aiogram import Router
 from aiogram.enums import ContentType
 from aiogram.types import CallbackQuery, Message
+from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.api.entities import MediaAttachment, MediaId
+from aiogram_dialog.widgets.input import ManagedTextInput, MessageInput, TextInput
+from aiogram_dialog.widgets.kbd import Back, Button, Cancel, Next, Row
 from aiogram_dialog.widgets.media import DynamicMedia
-from aiogram_dialog import Dialog, Window, DialogManager
-from aiogram_dialog.widgets.input import TextInput, MessageInput, ManagedTextInput
-from aiogram_dialog.widgets.kbd import Button, Back, Cancel, Row, Next
 from aiogram_dialog.widgets.text import Const, Format, Multi
+from tortoise.exceptions import IncompleteInstanceError, IntegrityError, OperationalError
 
-from db.models.participation import Participation
-from db.models.user import User
 from db.models.campaign import Campaign
+from db.models.participation import Participation
 from services.role import Role
 
 from . import states
 
+if TYPE_CHECKING:
+    from db.models.user import User
+
 logger = logging.getLogger(__name__)
+
+# === Константы ===
+MAX_TITLE_LEN = 255
+MAX_DESCRIPTION_LEN = 1023
 
 
 # === Гетеры ===
@@ -40,7 +48,7 @@ async def on_title_entered(
     dialog_manager: DialogManager,
     text: str,
 ):
-    if len(text) > 255:
+    if len(text) > MAX_TITLE_LEN:
         await mes.answer("Максимум 255 символов")
         return
     dialog_manager.dialog_data["title"] = text
@@ -53,7 +61,7 @@ async def on_description_entered(
     dialog_manager: DialogManager,
     text: str,
 ):
-    if len(text) > 1023:
+    if len(text) > MAX_DESCRIPTION_LEN:
         mes.answer("Максимум 1023 символа, можно пропустить")
         return
     dialog_manager.dialog_data["description"] = text
@@ -62,14 +70,10 @@ async def on_description_entered(
 
 async def on_icon_entered(mes: Message, wid: MessageInput, dialog_manager: DialogManager):
     if mes.photo:
-        try:
-            photo = mes.photo[-1]
-            dialog_manager.dialog_data["icon"] = photo.file_id
+        photo = mes.photo[-1]
+        dialog_manager.dialog_data["icon"] = photo.file_id
 
-            await dialog_manager.next()
-        except Exception as e:
-            logger.error(f"Error processing photo: {e}")
-            await mes.answer("❌ Ошибка при обработке изображения")
+        await dialog_manager.next()
     else:
         await mes.answer("❌ Пожалуйста, отправьте изображение")
 
@@ -98,8 +102,8 @@ async def on_confirm(mes: CallbackQuery, button: Button, dialog_manager: DialogM
         )
         await dialog_manager.done()
 
-    except Exception as e:
-        logger.error(f"Error creating campaign: {e}")
+    except (OperationalError, IntegrityError, IncompleteInstanceError) as e:
+        logger.exception("Error creating campaign", exc_info=e)
         await mes.answer("❌ Ошибка при создании кампании", show_alert=True)
 
 
