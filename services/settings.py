@@ -12,9 +12,7 @@ class Settings(BaseSettings):
     TZ: str = "Europe/Moscow"
 
     TOKEN_ADMIN: str = ""
-    ADMIN_BOT: Bot | None = None
     TOKEN_PLAYER: str = ""
-    PLAYER_BOT: Bot | None = None
     ADMIN_IDS: set[int] = set()
 
     # ^ PostgreSQL
@@ -73,6 +71,9 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=True,
     )
+
+    admin_bot: Bot | None = None
+    player_bot: Bot | None = None
 
 
 settings = Settings()

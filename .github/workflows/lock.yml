@@ -1,17 +1,17 @@
-﻿name: Check uv.lock
+﻿name: Check .lock
 
 on:
   workflow_dispatch:
   push:
     paths:
       - "pyproject.toml"
-      - ".github/workflows/uv-lock-check.yml"
+      - ".github/workflows/lock.yml"
 
 permissions:
   contents: write
 
 jobs:
-  check-uv-lock:
+  check:
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +40,26 @@ jobs:
             git config user.email "${{ secrets.RUFF_EMAIL }}"
             git add uv.lock
             git commit -m "Regenerate uv.lock"
-            git push
           else
             echo "uv.lock is up to date."
           fi
+
+      - name: Verify poetry.lock is up to date
+        run: |
+          cp poetry.lock poetry.lock.before
+
+          uv run poetry lock
+
+          if ! diff -q poetry.lock.before poetry.lock >/dev/null 2>&1; then
+            echo "poetry.lock is outdated. Regenerating and committing..."
+            git config user.name "${{ secrets.RUFF_USERNAME }}"
+            git config user.email "${{ secrets.RUFF_EMAIL }}"
+            git add poetry.lock
+            git commit -m "Regenerate poetry.lock"
+          else
+            echo "poetry.lock is up to date."
+          fi
+
+      - name: Push changes
+        run: |
+          git push

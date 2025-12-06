@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 async def generate_link(invitation: Invitation) -> str:
-    bot = settings.PLAYER_BOT if invitation.role == Role.PLAYER else settings.ADMIN_BOT
+    bot = settings.player_bot if invitation.role == Role.PLAYER else settings.admin_bot
 
     if isinstance(bot, Bot):
         bot_name = (await bot.get_my_name()).name

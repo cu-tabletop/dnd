@@ -1,4 +1,3 @@
-# db/models/invitation.py
 import uuid
 
 from tortoise import fields
@@ -12,19 +11,8 @@ class Invitation(TimestampedModel, UuidModel):
     user = fields.ForeignKeyField("models.User", related_name="invites_received", null=True)
     campaign = fields.ForeignKeyField("models.Campaign")
     role = fields.IntEnumField(Role, description="На какую роль мы приглашаем пользователя")
-    start_data = fields.UUIDField(index=True)
+    start_data = fields.UUIDField(index=True, default=uuid.uuid4)
     used = fields.BooleanField(default=False)
     created_by = fields.ForeignKeyField(
         "models.User", related_name="invites_created", null=True, on_delete=OnDelete.SET_NULL
     )
-
-    async def save(self, *args, **kwargs):
-        if not self.start_data:
-            self.start_data = uuid.uuid4()
-        await super().save(*args, **kwargs)
-
-    @classmethod
-    async def create(cls, **kwargs):  # noqa: ANN206
-        if "start_data" not in kwargs:
-            kwargs["start_data"] = uuid.uuid4()
-        return await super().create(**kwargs)

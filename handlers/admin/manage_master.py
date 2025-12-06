@@ -72,10 +72,10 @@ async def on_remove_user(callback: CallbackQuery, button: Button, dialog_manager
             show_alert=True,
         )
 
-        if settings.ADMIN_BOT is None:
+        if settings.admin_bot is None:
             msg = "bot is not specified"
             raise TypeError(msg)
-        await settings.ADMIN_BOT.send_message(user.id, f"👋 Вас удалили из {campaign.title}")
+        await settings.admin_bot.send_message(user.id, f"👋 Вас удалили из {campaign.title}")
 
         await dialog_manager.switch_to(states.EditPermissions.main)
     except OperationalError as e:

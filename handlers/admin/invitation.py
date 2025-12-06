@@ -119,7 +119,7 @@ async def on_username_entered(
     invitation.user = user
     await invitation.save()
 
-    bot = settings.PLAYER_BOT if invitation.role == Role.PLAYER else settings.ADMIN_BOT
+    bot = settings.player_bot if invitation.role == Role.PLAYER else settings.admin_bot
 
     if bot is None:
         msg = "bot is not specified"
@@ -155,10 +155,10 @@ async def on_accept(c: CallbackQuery, b: Button, m: DialogManager):
     await c.answer(f"Приглашение в кампанию {invite.campaign.title} принято!")
 
     if created_by is not None:
-        if settings.ADMIN_BOT is None:
+        if settings.admin_bot is None:
             msg = "bot is not specified"
             raise TypeError(msg)
-        await settings.ADMIN_BOT.send_message(
+        await settings.admin_bot.send_message(
             created_by.id, f"ℹ️ @{user.username} (Мастер) принял приглашение в {invite.campaign.title}"
         )
 
