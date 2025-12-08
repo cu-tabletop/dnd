@@ -224,7 +224,7 @@ confirm_delete_window = Window(
     Format("🎯 Вы точно хотите удалить {campaign_title}\n ЭТО ДЕЙСТВИЕ НЕ ОТМЕНИТЬ"),
     Button(Const("🚫 Удалить кампанию"), id="remove_campaign", on_click=on_remove_campaign),
     SwitchTo(
-        Const("⬅️ Назад"),
+        Const("⬅️ Отмена"),
         id="back",
         state=states.EditCampaignInfo.select_field,
     ),

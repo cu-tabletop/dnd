@@ -19,12 +19,12 @@ async def generate_link(invitation: Invitation) -> str:
     bot = settings.player_bot if invitation.role == Role.PLAYER else settings.admin_bot
 
     if isinstance(bot, Bot):
-        bot_name = (await bot.get_my_name()).name
+        bot_name = (await bot.get_me()).username
     else:
         msg = "bot is not specified"
         raise TypeError(msg)
 
-    return f"https://t.me/{bot_name}_bot?start={invitation.start_data}"
+    return f"https://t.me/{bot_name}?start={invitation.start_data}"
 
 
 async def generate_qr(link: str) -> str:

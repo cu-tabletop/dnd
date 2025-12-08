@@ -44,7 +44,7 @@ async def on_campaign_selected(
 
 # === Окна ===
 campaign_list_window = Window(
-    Const("🏰 Магическая Академия - Ваши кампейнами\n\n"),
+    Const("🏰 Магическая Академия - Ваши кампейны\n\n"),
     Const(
         "У вас пока нет доступных партий",
         when=lambda data, widget, dialog_manager: not data.get("has_campaigns", False),

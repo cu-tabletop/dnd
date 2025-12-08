@@ -45,6 +45,7 @@ class ManageInventory(StatesGroup):
     edit_inventory_item_name = State()
     edit_inventory_item_description = State()
     edit_inventory_item_quantity = State()
+    accept_delete = State()
 
 
 class EditCampaignInfo(StatesGroup):

@@ -56,7 +56,7 @@ async def on_edit_info(callback: CallbackQuery, button: Button, dialog_manager: 
 async def on_manage_characters(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
     campaign_id = dialog_manager.dialog_data.get("campaign_id", {})
     await dialog_manager.start(
-        states.ManageCharacters.character_menu,
+        states.ManageCharacters.character_selection,
         data={"campaign_id": campaign_id},
     )
 
@@ -84,6 +84,12 @@ async def on_stats(
         f"📈 Прогресс: 78%"
     )
     await callback.answer(stats_text, show_alert=True)
+
+
+        Button(
+            Const("🤝 Встречи"),
+            id="meetings",
+        ),
 """
 
 # === Окна ===
@@ -91,10 +97,6 @@ campaign_manage_window = Window(
     DynamicMedia("icon"),
     Format("🎓 Управление: {campaign_title}\n\nОписание: {campaign_description}\nВыберите действие:"),
     Group(
-        Button(
-            Const("🤝 Встречи"),
-            id="meetings",
-        ),
         Button(
             Const("✏️ Управление кампанией"),
             id="edit_info",

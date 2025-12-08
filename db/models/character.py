@@ -3,7 +3,7 @@ from tortoise import fields
 from .base import CharacterData, TimestampedModel, UuidModel
 
 
-class Character(TimestampedModel, CharacterData, UuidModel):
+class Character(CharacterData, TimestampedModel, UuidModel):
     user = fields.ForeignKeyField("models.User")
     campaign = fields.ForeignKeyField("models.Campaign")
 
