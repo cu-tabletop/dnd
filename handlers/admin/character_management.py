@@ -7,7 +7,7 @@ from aiogram import Router
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.widgets.input import ManagedTextInput, TextInput
-from aiogram_dialog.widgets.kbd import Back, Button, Cancel, Group, Row, ScrollingGroup, Select, Start, SwitchTo
+from aiogram_dialog.widgets.kbd import Back, Button, Cancel, Group, Row, ScrollingGroup, Select, SwitchTo
 from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Const, Format, Multi
 from tortoise.exceptions import IncompleteInstanceError, IntegrityError, OperationalError
@@ -240,6 +240,16 @@ async def on_download_json(callback: CallbackQuery, button: Button, dialog_manag
         await callback.answer("❌ Ошибка при выгрузке JSON", show_alert=True)
 
 
+async def on_view_inventory(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    await dialog_manager.start(
+        state=states.ManageInventory.view_inventory,
+        data={
+            "character_id": dialog_manager.dialog_data["character_id"],
+            "campaign_id": dialog_manager.dialog_data["campaign_id"],
+        },
+    )
+
+
 # === Окна ===
 character_selection_window = Window(
     Multi(
@@ -292,10 +302,10 @@ character_detail_window = Window(
             id="download_json",
             on_click=on_download_json,
         ),
-        Start(
+        Button(
             Const("🎒 Управление инвентарем"),
             id="manage_inventory",
-            state=states.ManageInventory.view_inventory,
+            on_click=on_view_inventory,
         ),
         width=2,
     ),

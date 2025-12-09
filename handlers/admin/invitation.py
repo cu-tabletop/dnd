@@ -41,10 +41,11 @@ async def get_link(dialog_manager: DialogManager, **kwargs):
         campaign = await Campaign.get(id=campaign_id)
         invite = await Invitation.create(campaign=campaign, role=role, created_by=created_by)
 
-        dialog_manager.dialog_data["link"] = await generate_link(invite)
+        link: str = await generate_link(invite)
+        dialog_manager.dialog_data["link"] = link
         dialog_manager.dialog_data["invite_id"] = invite.id
 
-    return {"link": dialog_manager.dialog_data["link"]}
+    return {"link": link}
 
 
 async def get_qr(dialog_manager: DialogManager, **kwargs):

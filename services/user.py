@@ -1,6 +1,7 @@
 from aiogram import types
 
 from db.models import User
+from services.settings import settings
 
 
 async def get_or_create_user(user: types.User):
@@ -8,6 +9,7 @@ async def get_or_create_user(user: types.User):
         id=user.id,
         defaults={
             "id": user.id,
+            "admin": user.id in settings.ADMIN_IDS,
             "username": user.username if user.username else None,
         },
     )
