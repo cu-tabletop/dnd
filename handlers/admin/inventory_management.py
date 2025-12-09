@@ -12,13 +12,11 @@ from tortoise.exceptions import OperationalError
 from db.models.character import Character
 from db.models.item import Item
 from db.models.user import User
+from services.settings import settings
 
 from . import states
 
 logger = logging.getLogger(__name__)
-
-# === Константы ===
-MAX_QUANTITY_ITEM = 1000
 
 
 # === Гетеры ===
@@ -90,8 +88,8 @@ async def on_item_quantity_input(message: Message, widget: ManagedTextInput, dia
         if quantity <= 0:
             await message.answer("❌ Количество должно быть положительным числом")
             return
-        if quantity > MAX_QUANTITY_ITEM:
-            await message.answer(f"❌ Количество не может превышать {MAX_QUANTITY_ITEM}")
+        if quantity > settings.MAX_ITEM_QUANTITY:
+            await message.answer(f"❌ Количество не может превышать {settings.MAX_ITEM_QUANTITY}")
             return
     except ValueError:
         await message.answer("❌ Пожалуйста, введите целое число")

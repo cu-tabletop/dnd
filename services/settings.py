@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     TOKEN_PLAYER: str = ""
     ADMIN_IDS: set[int] = set()
 
+    # ADMIN
+    MAX_ITEM_QUANTITY: int = 1000
+
     # ^ PostgreSQL
     DB_HOST: str = "db"
     DB_PORT: int = 5432
