@@ -14,14 +14,13 @@ logger = logging.getLogger(__name__)
 async def invitation_getter(dialog_manager: DialogManager, **kwargs):
     invite = await Invitation.get_or_none(id=get_invite_id(dialog_manager)).prefetch_related("campaign")
 
-    if invite is None:
-        msg = "Invitation not found"
-        raise ValueError(msg)
+    if isinstance(bot, Bot):
+        bot_name = (await bot.get_me()).username
+    else:
+        msg = "bot is not specified"
+        raise TypeError(msg)
 
-    return {
-        "campaign_title": invite.campaign.title,
-        "role": invite.role.name,
-    }
+    return f"https://t.me/{bot_name}?start={invitation.start_data}"
 
 
 async def handle_accept_invitation(m: DialogManager, callback: CallbackQuery, user: User, invitation: Invitation):
