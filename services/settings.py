@@ -6,6 +6,7 @@
 from services.settings import settings
 ```
 """
+
 from typing import Any
 from zoneinfo import ZoneInfo
 
