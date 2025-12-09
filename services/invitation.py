@@ -25,7 +25,9 @@ async def invitation_getter(dialog_manager: DialogManager, **kwargs):
 
 
 async def handle_accept_invitation(m: DialogManager, callback: CallbackQuery, user: User, invitation: Invitation):
-    participation = await Participation.create(user=user, campaign=invitation.campaign, role=invitation.role)
+    participation, _created = await Participation.get_or_create(
+        user=user, campaign=invitation.campaign, role=invitation.role
+    )
 
     await callback.answer(f"Приглашение в кампанию {invitation.campaign.title} принято!")
 
