@@ -57,10 +57,10 @@ class Item(TimestampedModel, UuidModel):
 
     def clean(self):
         """Validate model before saving"""
-        if self.holder_character and self.holder_user:
+        if self.holder_character.id and self.holder_user.id:
             raise ItemHeldByBothError
 
-        if not self.holder_character and not self.holder_user:
+        if not self.holder_character.id and not self.holder_user.id:
             raise NoHolderError
 
     async def save(self, *args, **kwargs):

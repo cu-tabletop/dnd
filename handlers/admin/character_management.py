@@ -257,16 +257,6 @@ async def on_download_json(callback: CallbackQuery, button: Button, dialog_manag
         await callback.answer("❌ Ошибка при выгрузке JSON", show_alert=True)
 
 
-async def on_view_inventory(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
-    await dialog_manager.start(
-        state=states.ManageInventory.view_inventory,
-        data={
-            "character_id": dialog_manager.dialog_data["character_id"],
-            "campaign_id": dialog_manager.dialog_data["campaign_id"],
-        },
-    )
-
-
 # === Окна ===
 character_selection_window = Window(
     Multi(
@@ -318,10 +308,10 @@ character_detail_window = Window(
             id="download_json",
             on_click=on_download_json,
         ),
-        Button(
+        Start(
             Const("🎒 Управление инвентарем"),
             id="manage_inventory",
-            on_click=on_view_inventory,
+            state=states.ManageInventory.view_inventory,
         ),
         width=2,
     ),
