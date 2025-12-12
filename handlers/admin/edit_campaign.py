@@ -137,18 +137,18 @@ async def on_remove_campaign(callback: CallbackQuery, button: Button, dialog_man
 select_field_window = Window(
     DynamicMedia("icon"),
     Multi(
-        Format("✏️ Редактирование: {campaign_title}"),
-        Format("📜 Описание: {campaign_description}"),
-        Const("Выберите что хотите изменить:"),
+        Format("⚙️ Настройки кампании: {campaign_title}"),
+        Format("📄 Описание: {campaign_description}"),
+        Const("\nВыберите что хотите изменить:"),
     ),
     Column(
-        Button(Const("📝 Название"), id="title", on_click=on_field_selected),
+        Button(Const("✏️ Изменить название"), id="title", on_click=on_field_selected),
         Button(
-            Const("📄 Описание"),
+            Const("📝 Изменить описание"),
             id="description",
             on_click=on_field_selected,
         ),
-        Button(Const("🎨 Иконка"), id="icon", on_click=on_field_selected),
+        Button(Const("🎨 Изменить иконку"), id="icon", on_click=on_field_selected),
         Button(
             Const("🗑️ Удаление кампании"),
             id="delete",
@@ -187,7 +187,7 @@ edit_description_window = Window(
 )
 
 edit_icon_window = Window(
-    Const("🎨 Загрузите иконку для вашей:\nОтправьте изображение как фото (не файлом)"),
+    Const("🎨 Загрузите иконку для вашей кампании:\nОтправьте изображение как фото (не файлом)"),
     MessageInput(func=on_icon_entered, content_types=ContentType.PHOTO),
     SwitchTo(
         Const("⬅️ Назад"),
@@ -218,7 +218,7 @@ confirm_edit_window = Window(
     getter=get_campaign_edit_data,
 )
 confirm_delete_window = Window(
-    Format("🎯 Вы точно хотите удалить {campaign_title}\n ЭТО ДЕЙСТВИЕ НЕ ОТМЕНИТЬ"),
+    Format("⚠️ Вы точно хотите удалить кампанию?\n\n<b>{campaign_title}</b>\n\nЭто действие нельзя отменить!"),
     Button(Const("🚫 Удалить кампанию"), id="remove_campaign", on_click=on_remove_campaign),
     SwitchTo(
         Const("⬅️ Отмена"),

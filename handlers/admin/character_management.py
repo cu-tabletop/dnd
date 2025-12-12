@@ -28,6 +28,7 @@ from db.models.participation import Participation
 from db.models.user import User
 from services.character_data import character_preview_getter
 from services.settings import settings
+from utils.character import CharacterData as CharData
 from utils.character import parse_character_data
 from utils.role import Role
 
@@ -69,15 +70,21 @@ async def get_characters_for_campaign(dialog_manager: DialogManager, **kwargs):
             for char in (await Character.filter(campaign=campaign).prefetch_related("user").all())
         ]
 
-    characters_data = [
-        (parse_character_data(json.loads(char.data["data"])), user, model_uuid) for char, user, model_uuid in characters
-    ]
+    characters_data: list[tuple[CharData, User, UuidModel]] = []
+    player_without_characters = []
+    for char, user, model_uuid in characters:
+        if char.data:
+            characters_data.append((parse_character_data(json.loads(char.data["data"])), user, model_uuid))
+        else:
+            player_without_characters.append(user.username)
 
     return {
         "characters": characters_data,
+        "player_without_characters": " @" + ", @".join(player_without_characters),
         "campaign_title": campaign.title,
         "has_characters": len(characters_data) > 0,
         "is_verified": campaign.verified,
+        "has_player_without_characters": len(player_without_characters) > 0,
     }
 
 
@@ -194,7 +201,7 @@ async def on_level_input(message: Message, widget: ManagedTextInput, dialog_mana
             return
 
         character = await get_character_data(character_id)
-        character_data = character.data
+        character_data = character.data or {}
 
         character_data["data"] = character_data.get("data", "")
 
@@ -205,17 +212,15 @@ async def on_level_input(message: Message, widget: ManagedTextInput, dialog_mana
 
         character_data["data"] = json.dumps(new_data)
 
-        character.data = character_data
         await character.save()
-
-        await message.answer(f"✅ Уровень изменен на {level}")
+        await message.answer(f"✅ Уровень персонажа изменен на {level}")
         await dialog_manager.switch_to(states.ManageCharacters.character_menu)
 
     except ValueError:
-        await message.answer("❌ Введите целое число")
-    except (IncompleteInstanceError, IntegrityError, OperationalError) as e:
-        logger.exception("Error updating level", exc_info=e)
-        await message.answer("❌ Ошибка при обновлении уровня")
+        await message.answer("❌ Пожалуйста, введите целое число")
+    except Exception as e:
+        logger.exception("Ошибка при изменении уровня персонажа", exc_info=e)
+        await message.answer("❌ Не удалось изменить уровень")
 
 
 async def on_add_character(mes: CallbackQuery, wif: Button, dialog_manager: DialogManager):
@@ -270,6 +275,9 @@ character_selection_window = Window(
             "В этой кампании нет персонажей",
             when=lambda data, *_: not data.get("has_characters", False),
         ),
+        Format(
+            "Игроки у которых ещё нет персонажей: {player_without_characters}", when="has_player_without_characters"
+        ),
         sep="\n",
     ),
     ScrollingGroup(
@@ -292,15 +300,16 @@ character_selection_window = Window(
 
 character_detail_window = Window(
     DynamicMedia("avatar", when="avatar"),
-    Format("Игрок: @{user.username}"),
-    Format("Текущий рейтинг: {user.rating}", when="is_verified"),
+    Format("👤 Игрок: @{user.username}"),
+    Format("🏆 Текущий рейтинг: {user.rating}", when="is_verified"),
     Format("{character_data_preview}", when="character_data_preview"),
-    Url(Const("Перейти в профиль"), Format("{profile_link}")),
+    Url(Const("👤 Перейти в профиль"), Format("{profile_link}")),
     Group(
         SwitchTo(
             Const("📈 Изменить уровень"),
             id="change_level",
             state=states.ManageCharacters.change_level,
+            when="character_data_preview",
         ),
         SwitchTo(
             Const("🏆 Изменить рейтинг"),
@@ -320,8 +329,8 @@ character_detail_window = Window(
         ),
         width=2,
     ),
-    Back(Const("⬅️ Назад к выбору персонажа")),
-    Cancel(Const("❌ Выход")),
+    Back(Const("⬅️ Назад")),
+    Cancel(Const("🏠 В главное меню")),
     state=states.ManageCharacters.character_menu,
     getter=preview_getter,
 )

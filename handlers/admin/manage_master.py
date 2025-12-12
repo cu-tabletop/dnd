@@ -92,7 +92,8 @@ async def on_add_master(mes: CallbackQuery, wid: Button, dialog_manager: DialogM
 # === Окна ===
 permissions_main_window = Window(
     Multi(
-        Format("🧙‍♂️ Управление мастерами: {campaign.title}\n"),
+        Format("👑 Управление мастерами: {campaign.title}\n"),
+        Const("Мастера могут управлять персонажами в этой кампании"),
     ),
     ScrollingGroup(
         Select(
@@ -118,7 +119,8 @@ permissions_main_window = Window(
 )
 
 select_permission_window = Window(
-    Format("🎯 Изменение доступа\n\nМастер: {username}\n"),
+    Format("👤 Мастер: @{username}\n"),
+    Const("\nВыберите действие:"),
     Button(Const("🚫 Удалить мастера"), id="remove_user", on_click=on_remove_user),
     SwitchTo(
         Const("⬅️ Назад к списку"),

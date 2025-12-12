@@ -13,6 +13,7 @@ from states.academy import Academy
 from states.academy_campaigns import AcademyCampaigns
 from states.rating import AcademyRating
 from states.upload_character import UploadCharacter
+from utils.redirect import redirect
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -54,6 +55,7 @@ router.include_router(
             ),
             getter=character_data_getter,
             state=Academy.main,
-        )
+        ),
+        on_start=redirect,
     )
 )

@@ -9,6 +9,7 @@ from aiogram_dialog.widgets.text import Const, Format
 
 from db.models import Campaign, Participation
 from states.academy_campaigns import AcademyCampaignPreview, AcademyCampaigns
+from utils.redirect import redirect
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -56,7 +57,8 @@ router.include_router(
             Cancel(Const("Назад")),
             getter=campaigns_getter,
             state=AcademyCampaigns.campaigns,
-        )
+        ),
+        on_start=redirect,
     )
 )
 
@@ -69,6 +71,7 @@ router.include_router(
             Cancel(Const("Назад")),
             getter=campaign_getter,
             state=AcademyCampaignPreview.preview,
-        )
+        ),
+        on_start=redirect,
     )
 )

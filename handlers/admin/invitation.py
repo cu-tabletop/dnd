@@ -3,20 +3,19 @@ import logging
 from aiogram import Router
 from aiogram.enums import ContentType
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
-from aiogram_dialog import Dialog, DialogManager, Window
+from aiogram_dialog import Dialog, DialogManager, StartMode, Window
 from aiogram_dialog.api.entities import MediaAttachment
 from aiogram_dialog.widgets.input import ManagedTextInput, TextInput
 from aiogram_dialog.widgets.kbd import Back, Button, Cancel, Next
 from aiogram_dialog.widgets.link_preview import LinkPreview
 from aiogram_dialog.widgets.media import DynamicMedia
-from aiogram_dialog.widgets.text import Const, Format
+from aiogram_dialog.widgets.text import Const, Format, Multi
 
 from db.models import Invitation
 from db.models.campaign import Campaign
 from db.models.user import User
 from services.invitation import handle_accept_invitation, invitation_getter
 from services.settings import settings
-from states.academy_campaigns import AcademyCampaignPreview
 from utils.invitation import generate_link, generate_qr
 from utils.role import Role
 
@@ -115,27 +114,32 @@ async def on_username_entered(
     await dialog_manager.done()
 
 
-async def on_accept(c: CallbackQuery, _: Button, m: DialogManager):
-    invite_id = m.dialog_data.get("invite_id")
+async def on_accept(msg: CallbackQuery, _: Button, dialog_manager: DialogManager):
+    invite_id = dialog_manager.dialog_data.get("invite_id")
     if not invite_id:
-        await c.answer("❌ Приглашение не найдено", show_alert=True)
-        await m.reset_stack()
+        await msg.answer("❌ Приглашение не найдено", show_alert=True)
+        await dialog_manager.reset_stack()
         return
 
     invite = await Invitation.get_or_none(id=invite_id).prefetch_related("campaign", "created_by")
     if invite is None:
-        await c.answer("❌ Приглашение не найдено", show_alert=True)
-        await m.reset_stack()
+        await msg.answer("❌ Приглашение не найдено", show_alert=True)
+        await dialog_manager.reset_stack()
         return
 
-    user = m.middleware_data["user"]
+    user = dialog_manager.middleware_data["user"]
 
-    participation = await handle_accept_invitation(m, c, user, invite)
+    participation = await handle_accept_invitation(dialog_manager, msg, user, invite)
 
     if invite.campaign.verified:
-        await m.start(
-            AcademyCampaignPreview.preview,
-            data={"campaign_id": invite.campaign.id, "participation_id": participation.id},
+        await dialog_manager.start(
+            states.CampaignList.main,
+            data={
+                "campaign_id": invite.campaign.id,
+                "participation_id": participation.id,
+                "redirect_to": states.CampaignManage.main,
+            },
+            mode=StartMode.RESET_STACK,
         )
     else:
         # TODO @pxc1984: когда доделаем другие игры следует сюда добавить логику активации игры для них
@@ -145,13 +149,15 @@ async def on_accept(c: CallbackQuery, _: Button, m: DialogManager):
 
 # === Окна ===
 invite_menu_window = Window(
-    Format(
-        "Отправьте эту ссылку для приглашения: <code>{link}</code>\n"
-        "Или напишите @username гостя здесь\n"
-        "(учтите 1 ссылка – 1 приглашение)"
+    Multi(
+        Const("✉️ Приглашение в кампанию\n"),
+        Format("\nСсылка для приглашения: <code>{link}</code>"),
+        Const("\nИли введите @username пользователя ниже"),
+        Const("(каждая ссылка работает только один раз)"),
+        sep="\n",
     ),
     LinkPreview(is_disabled=False),
-    Button(Const("Сгенерировать новую ссылку"), id="regenerate_link", on_click=on_regenerate_link),
+    Button(Const("🔄 Сгенерировать новую ссылку"), id="regenerate_link", on_click=on_regenerate_link),
     TextInput(
         id="username_input",
         on_success=on_username_entered,
@@ -172,9 +178,9 @@ qr_window = Window(
 
 
 invite_window = Window(
-    Format("Вас пригласили в кампанию <b>{campaign_title}</b> на роль <b>{role}</b>"),
-    Button(Const("Присоединиться"), id="accept_admin", on_click=on_accept),
-    Cancel(Const("Отказаться")),
+    Format("🎉 Вас пригласили в кампанию!\n\n<b>{campaign_title}</b>\nРоль: <b>{role}</b>"),
+    Button(Const("✅ Присоединиться"), id="accept_admin", on_click=on_accept),
+    Cancel(Const("❌ Отказаться")),
     getter=invitation_getter,
     state=states.InviteMenu.invite,
 )

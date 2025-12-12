@@ -8,10 +8,12 @@ from aiogram_dialog.widgets.kbd import Button, Column
 from aiogram_dialog.widgets.text import Const
 
 from db.models import Invitation, User
+from db.models.participation import Participation
 from states.academy import Academy
 from states.invitation import InvitationAccept
 from states.start_simple import StartSimple
 from states.upload_character import UploadCharacter
+from utils.redirect import redirect
 from utils.uuid import is_valid_uuid
 
 logger = logging.getLogger(__name__)
@@ -22,9 +24,14 @@ router = Router()
 async def start_args(message: Message, command: CommandObject, dialog_manager: DialogManager, user: User):
     if not command.args:
         return
+
     if not is_valid_uuid(command.args):
         logger.warning("User %s used /start with invalid UUID: %s", user.id, command.args)
+        await message.reply(
+            "❌ Неверная ссылка приглашения.\n\nПожалуйста, убедитесь, что ссылка скопирована полностью и корректно."
+        )
         return
+
     invite = await Invitation.get_or_none(start_data=command.args).prefetch_related("user", "campaign")
     if not invite:
         logger.warning(
@@ -32,7 +39,13 @@ async def start_args(message: Message, command: CommandObject, dialog_manager: D
             user.id,
             command.args,
         )
+        await message.reply(
+            "❌ Приглашение не найдено.\n\n"
+            "Возможно, ссылка устарела или была отозвана. "
+            "Попросите мастера отправить новое приглашение."
+        )
         return
+
     if invite.user is None:
         invite.user = user
         await invite.save()
@@ -43,14 +56,35 @@ async def start_args(message: Message, command: CommandObject, dialog_manager: D
             command.args,
             invite.user.id,
         )
+        await message.reply(
+            "🔒 Это приглашение предназначено другому пользователю.\n\n"
+            "Каждое приглашение привязано к конкретному Telegram-аккаунту. "
+            "Попросите мастера отправить вам персональное приглашение."
+        )
         return
+
     logger.info("%s пригласили в игру %s на роль %s", invite.user.id, invite.campaign.id, invite.role.name)
     if invite.used:
         await message.reply(
-            "Сорян, этот инвайт уже был использован.\n\n"
-            "Если ты его использовал по ошибке, то попроси мастера пригласить тебя еще раз"
+            "⚠️ Это приглашение уже было использовано.\n\n"
+            "Если вы хотите присоединиться к кампании, попросите мастера "
+            "отправить вам новое приглашение."
         )
         return
+
+    participation = await Participation.get_or_none(user=user, campaign=invite.campaign)
+    if participation is not None:
+        logger.info(
+            "User %s used /start in the %s campaign, where he was already invited. It was for %s.",
+            user.id,
+            command.args,
+            invite.user.id,
+        )
+        await message.reply(
+            f"🗳️ Вы уже участвуете в этой кампании в качестве {'игрока' if (i := participation.role == 0) else str(i)}"
+        )
+        return
+
     logger.debug(
         "Такой инвайт был найден. %s пригласили в игру %s на роль %s",
         invite.user.id,
@@ -91,6 +125,7 @@ router.include_router(
                 #    https://github.com/cu-tabletop/dnd/issues/11
             ),
             state=StartSimple.simple,
-        )
+        ),
+        on_start=redirect,
     )
 )

@@ -9,6 +9,7 @@ from aiogram_dialog.widgets.kbd import Button, ScrollingGroup, Select, Start
 from aiogram_dialog.widgets.text import Const, Format
 
 from db.models.participation import Participation
+from utils.redirect import redirect
 
 from . import states
 
@@ -44,9 +45,9 @@ async def on_campaign_selected(
 
 # === Окна ===
 campaign_list_window = Window(
-    Const("🏰 Магическая Академия - Ваши кампейны\n\n"),
+    Const("🏰 Ваши кампании\n\n"),
     Const(
-        "У вас пока нет доступных партий",
+        "У вас пока нет доступных кампаний",
         when=lambda data, widget, dialog_manager: not data.get("has_campaigns", False),
     ),
     ScrollingGroup(
@@ -77,7 +78,8 @@ campaign_list_window = Window(
     getter=get_campaigns_data,
 )
 
+
 # === Создание диалога и роутера ===
-dialog = Dialog(campaign_list_window)
+dialog = Dialog(campaign_list_window, on_start=redirect)
 router = Router()
 router.include_router(dialog)

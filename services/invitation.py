@@ -5,6 +5,7 @@ from aiogram_dialog import DialogManager
 
 from db.models import Invitation, Participation, User
 from utils.invitation import get_invite_id
+from utils.role import Role
 
 from .settings import settings
 
@@ -29,14 +30,16 @@ async def handle_accept_invitation(m: DialogManager, callback: CallbackQuery, us
         user=user, campaign=invitation.campaign, role=invitation.role
     )
 
-    await callback.answer(f"Приглашение в кампанию {invitation.campaign.title} принято!")
+    await callback.answer(f"🎉 Приглашение в кампанию {invitation.campaign.title} принято!")
 
     if invitation.created_by is not None:
         if settings.admin_bot is None:
-            msg = "bot is not specified"
+            msg = "player bot is not specified"
             raise TypeError(msg)
+        role = "Мастер" if invitation.role == Role.MASTER else "игрок"
         await settings.admin_bot.send_message(
-            invitation.created_by.id, f"ℹ️ @{user.username} (Игрок) принял приглашение в {invitation.campaign.title}"
+            invitation.created_by.id,
+            f"ℹ️ @{user.username} ({role}) принял приглашение в {invitation.campaign.title}",
         )
 
     await m.done()

@@ -95,10 +95,10 @@ async def on_stats(
 # === Окна ===
 campaign_manage_window = Window(
     DynamicMedia("icon"),
-    Format("🎓 Управление: {campaign_title}\n\nОписание: {campaign_description}\nВыберите действие:"),
+    Format("🎓 Управление кампанией: {campaign_title}\n\nОписание: {campaign_description}\n\nВыберите действие:"),
     Group(
         Button(
-            Const("✏️ Управление кампанией"),
+            Const("⚙️ Настройки кампании"),
             id="edit_info",
             on_click=on_edit_info,
         ),
@@ -108,14 +108,14 @@ campaign_manage_window = Window(
             on_click=on_manage_characters,
         ),
         Button(
-            Const("🧙‍♂️ Управление мастерами"),
+            Const("👑 Управление мастерами"),
             id="permissions",
             on_click=on_permissions,
             when="is_owner",
         ),
         width=1,
     ),
-    Cancel(Const("⬅️ Назад")),
+    Cancel(Const("⬅️ Назад к списку")),
     state=states.CampaignManage.main,
     getter=get_campaign_manage_data,
 )

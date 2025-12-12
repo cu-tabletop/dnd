@@ -215,7 +215,7 @@ view_inventory_window = Window(
         Const("🎒 Инвентарь персонажа"),
         Const(""),
         Const("Выберите предмет для редактирования:"),
-        Const("В инвентаре пока нет предметов", when=lambda data, *_: not data.get("has_items", False)),
+        Const("📭 В инвентаре пока нет предметов", when=lambda data, *_: not data.get("has_items", False)),
         sep="\n",
     ),
     ScrollingGroup(
