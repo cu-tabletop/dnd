@@ -1,5 +1,5 @@
 class StartDataMissingError(Exception):
-    def __init__(self, message):
+    def __init__(self, message: str) -> None:
         self.message = message
 
     def __str__(self) -> str:
@@ -9,7 +9,7 @@ class StartDataMissingError(Exception):
 
 
 class StartDataInvalidError(Exception):
-    def __init__(self, message):
+    def __init__(self, message: str) -> None:
         self.message = message
 
     def __str__(self) -> str:

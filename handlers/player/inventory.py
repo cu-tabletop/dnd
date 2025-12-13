@@ -1,18 +1,15 @@
-import json
 import logging
 from uuid import UUID
 
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from aiogram_dialog import Dialog, DialogManager, Window
-from aiogram_dialog.widgets.kbd import ScrollingGroup, Select, Button, Back, Cancel
-from aiogram_dialog.widgets.text import Format, Const
+from aiogram_dialog.widgets.kbd import Back, Button, Cancel, ScrollingGroup, Select
+from aiogram_dialog.widgets.text import Const, Format
+from pydantic import BaseModel, field_validator
 
-from db.models import Item, Campaign
-from exceptions.dialog import StartDataMissingError, StartDataInvalidError
+from db.models import Campaign, Item
 from states.inventory_view import InventoryView, TargetType
-from pydantic import BaseModel, validator, field_validator
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -21,11 +18,11 @@ router = Router()
 class InventoryRequest(BaseModel):
     target_type: TargetType
     target_id: int
-    campaign_id: Optional[int] = None
+    campaign_id: int | None = None
 
     @classmethod
     @field_validator("target_type", mode="before")
-    def validate_target_type(cls, v):
+    def validate_target_type(cls, v: TargetType | int | str) -> TargetType | None:
         if isinstance(v, TargetType):
             return v
         try:
@@ -37,14 +34,15 @@ class InventoryRequest(BaseModel):
                 except ValueError:
                     return TargetType[v.upper()]
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Invalid target_type: {v}") from e
+            msg = f"Invalid target_type: {v}"
+            raise ValueError(msg) from e
 
     @classmethod
     @field_validator("campaign_id", mode="wrap")
-    def validate_campaign_id(cls, v, values):
-        if "target_type" in values and values["target_type"] == TargetType.CHARACTER:
-            if v is None:
-                raise ValueError("campaign_id is required for CHARACTER target type")
+    def validate_campaign_id(cls, v: int | None, values: dict) -> int:
+        if "target_type" in values and values["target_type"] == TargetType.CHARACTER and v is None:
+            msg = "campaign_id is required for CHARACTER target type"
+            raise ValueError(msg)
         return v
 
 
