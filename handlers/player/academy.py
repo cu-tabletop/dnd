@@ -11,6 +11,7 @@ from aiogram_dialog.widgets.text import Const, Format
 from services.character_data import character_preview_getter
 from states.academy import Academy
 from states.academy_campaigns import AcademyCampaigns
+from states.inventory_view import InventoryView, TargetType
 from states.rating import AcademyRating
 from states.upload_character import UploadCharacter
 from utils.redirect import redirect
@@ -19,7 +20,8 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-async def on_inventory(c: CallbackQuery, b: Button, m: DialogManager): ...
+async def on_inventory(c: CallbackQuery, b: Button, m: DialogManager):
+    await m.start(InventoryView.view, data={"target_type": TargetType.USER, "target_id": m.middleware_data["user"].id})
 
 
 async def on_update(c: CallbackQuery, b: Button, m: DialogManager):
