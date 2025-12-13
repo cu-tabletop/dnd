@@ -9,8 +9,11 @@ from aiogram_dialog.widgets.text import Const
 
 from db.models import Invitation, User
 from db.models.participation import Participation
+from handlers.player.upload import UploadCharacterRequest
 from states.academy import Academy
+from states.inventory_view import TargetType
 from states.invitation import InvitationAccept
+from states.other_games import OtherGames
 from states.start_simple import StartSimple
 from states.upload_character import UploadCharacter
 from utils.redirect import redirect
@@ -108,12 +111,16 @@ async def start_simple(message: Message, dialog_manager: DialogManager, user: Us
 async def on_academy(c: CallbackQuery, b: Button, m: DialogManager):
     user: User = m.middleware_data["user"]
     if user.data is None:
-        await m.start(UploadCharacter.upload, data={"source": "user"})
+        await m.start(
+            UploadCharacter.upload,
+            data={"request": UploadCharacterRequest(target_type=TargetType.USER, target_id=user.id)},
+        )
         return
     await m.start(Academy.main)
 
 
-async def on_other(c: CallbackQuery, b: Button, m: DialogManager): ...
+async def on_other(c: CallbackQuery, b: Button, m: DialogManager):
+    await m.start(OtherGames.main)
 
 
 router.include_router(

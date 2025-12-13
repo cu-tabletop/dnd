@@ -8,6 +8,7 @@ from aiogram_dialog.widgets.kbd import Button, Cancel, Column
 from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Const, Format
 
+from handlers.player.upload import UploadCharacterRequest
 from services.character_data import character_preview_getter
 from states.academy import Academy
 from states.academy_campaigns import AcademyCampaigns
@@ -25,7 +26,10 @@ async def on_inventory(c: CallbackQuery, b: Button, m: DialogManager):
 
 
 async def on_update(c: CallbackQuery, b: Button, m: DialogManager):
-    await m.start(UploadCharacter.upload, data={"source": "user"})
+    await m.start(
+        UploadCharacter.upload,
+        data={"request": UploadCharacterRequest(target_type=TargetType.USER, target_id=m.middleware_data["user"].id)},
+    )
 
 
 async def on_rating(c: CallbackQuery, b: Button, m: DialogManager):
