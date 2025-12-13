@@ -4,7 +4,7 @@ from aiogram import Router
 from aiogram.enums import ContentType
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import Dialog, DialogManager, Window
-from aiogram_dialog.api.entities import MediaAttachment, MediaId
+from aiogram_dialog.api.entities import MediaAttachment
 from aiogram_dialog.widgets.input import ManagedTextInput, MessageInput, TextInput
 from aiogram_dialog.widgets.kbd import Button, Cancel, Column, SwitchTo
 from aiogram_dialog.widgets.media import DynamicMedia
@@ -36,8 +36,8 @@ async def get_campaign_edit_data(dialog_manager: DialogManager, **kwargs):
         dialog_manager.dialog_data["new_data"] = {}
 
     icon = None
-    if file_id := dialog_manager.dialog_data["new_data"].get("icon", campaign.icon):
-        icon = MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(file_id))
+    if object_name := dialog_manager.dialog_data["new_data"].get("icon", campaign.icon):
+        icon = MediaAttachment(type=ContentType.PHOTO, path=f"minio://campaign-icons:{object_name}")
 
     return {
         "campaign_title": dialog_manager.dialog_data["new_data"].get("title", campaign.title),

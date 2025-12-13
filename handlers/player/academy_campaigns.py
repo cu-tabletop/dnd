@@ -5,7 +5,7 @@ from aiogram import Router
 from aiogram.enums import ContentType
 from aiogram.types import CallbackQuery
 from aiogram_dialog import Dialog, DialogManager, Window
-from aiogram_dialog.api.entities import MediaAttachment, MediaId
+from aiogram_dialog.api.entities import MediaAttachment
 from aiogram_dialog.widgets.kbd import Button, Cancel, ScrollingGroup, Select
 from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Const, Format
@@ -42,8 +42,8 @@ async def campaign_getter(dialog_manager: DialogManager, **kwargs):
     participation: Participation = await Participation.get(id=participation_id)
 
     icon = None
-    if file_id := campaign.icon:
-        icon = MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(file_id))
+    if object_name := campaign.icon:
+        icon = MediaAttachment(type=ContentType.PHOTO, path=f"minio://campaign-icons:{object_name}")
 
     return {
         "title": campaign.title,
