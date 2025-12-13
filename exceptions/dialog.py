@@ -7,6 +7,7 @@ class StartDataMissingError(Exception):
             return "Required start data for dialog to be initialized wasn't fully passed."
         return self.message
 
+
 class StartDataInvalidError(Exception):
     def __init__(self, message):
         self.message = message

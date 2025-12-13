@@ -24,7 +24,7 @@ class InventoryRequest(BaseModel):
     campaign_id: Optional[int] = None
 
     @classmethod
-    @field_validator('target_type', mode="before")
+    @field_validator("target_type", mode="before")
     def validate_target_type(cls, v):
         if isinstance(v, TargetType):
             return v
@@ -40,11 +40,11 @@ class InventoryRequest(BaseModel):
             raise ValueError(f"Invalid target_type: {v}") from e
 
     @classmethod
-    @field_validator('campaign_id', mode="wrap")
+    @field_validator("campaign_id", mode="wrap")
     def validate_campaign_id(cls, v, values):
-        if 'target_type' in values and values['target_type'] == TargetType.CHARACTER:
+        if "target_type" in values and values["target_type"] == TargetType.CHARACTER:
             if v is None:
-                raise ValueError('campaign_id is required for CHARACTER target type')
+                raise ValueError("campaign_id is required for CHARACTER target type")
         return v
 
 
@@ -62,6 +62,7 @@ async def inventory_data_getter(dialog_manager: DialogManager, **kwargs) -> dict
         "inventory": items,
         "has_items": len(items) > 0,
     }
+
 
 async def get_inventory_item_data(dialog_manager: DialogManager, **kwargs):
     """Получение данных о выбранном предмете"""
