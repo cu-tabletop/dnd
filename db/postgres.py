@@ -1,6 +1,6 @@
 import logging
 
-from tortoise import Tortoise
+from tortoise import Tortoise, connections
 
 from services.settings import settings
 
@@ -22,3 +22,11 @@ async def close_db() -> None:
 
     await Tortoise.close_connections()
     logger.info("Tortoise ORM соединения закрыты")
+
+
+async def test_db() -> None:
+    """Проверка подключения к DB"""
+
+    conn = connections.get("default")
+    await conn.execute_query("SELECT 1")
+    logger.info("Соединение с DB успешно")

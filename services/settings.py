@@ -11,8 +11,9 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from aiogram import Bot
+from minio import Minio
 from pydantic import Field, computed_field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -37,6 +38,13 @@ class Settings(BaseSettings):
     DB_NAME: str = "db"
     DB_USER: str = Field(default="admin", alias="POSTGRES_USER")
     DB_PASSWORD: str = Field(default="admin", alias="POSTGRES_PASSWORD")
+
+    # ^ Minio
+    MINIO_HOST: str = "localhost"
+    MINIO_PORT: str = "9000"
+    MINIO_ROOT_USER: str = Field(default="admin", alias="MINIO_ROOT_USER")
+    MINIO_ROOT_PASSWORD: str = Field(default="admin", alias="MINIO_ROOT_PASSWORD")
+    MINIO_BUCKETS: list[str] = ["campaign-icons"]
 
     # ^ Redis
     REDIS_HOST: str = "redis"
@@ -80,16 +88,24 @@ class Settings(BaseSettings):
             self._timezone = ZoneInfo(self.TZ)
         return self._timezone
 
-    # Конфигурация модели
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-        case_sensitive=True,
-    )
+    @computed_field
+    @property
+    def minio(self) -> Minio:
+        return Minio(
+            f"{self.MINIO_HOST}:{self.MINIO_PORT}",
+            access_key=self.MINIO_ROOT_USER,
+            secret_key=self.MINIO_ROOT_PASSWORD,
+            secure=False,
+        )
 
     admin_bot: Bot | None = None
     player_bot: Bot | None = None
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        extra = "ignore"
+        case_sensitive = True
 
 
 settings = Settings()

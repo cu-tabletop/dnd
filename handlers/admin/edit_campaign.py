@@ -93,7 +93,7 @@ async def on_icon_entered(mes: Message, wid: MessageInput, dialog_manager: Dialo
     if mes.photo:
         photo = mes.photo[-1]
 
-        dialog_manager.dialog_data["new_data"]["icon"] = photo.file_id
+        dialog_manager.dialog_data["new_data"]["icon"] = photo.file_unique_id
 
         await dialog_manager.switch_to(states.EditCampaignInfo.confirm)
     else:

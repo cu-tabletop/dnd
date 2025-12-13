@@ -14,6 +14,17 @@
     ports:
       - "8080:8080"
 
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    env_file:
+      - .env
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
   bot:
     build:
       context: .
@@ -38,3 +49,4 @@
 volumes:
   postgres_data:
   redis_data:
+  minio_data:

@@ -68,6 +68,9 @@ async def on_description_entered(
 async def on_icon_entered(mes: Message, wid: MessageInput, dialog_manager: DialogManager):
     if mes.photo:
         photo = mes.photo[-1]
+        file = await mes.bot.get_file(photo.file_id)
+        await mes.bot.download_file(file.file_path)
+        settings.minio.append_object()
         dialog_manager.dialog_data["icon"] = photo.file_id
 
         await dialog_manager.next()
