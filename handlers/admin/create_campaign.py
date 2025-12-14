@@ -128,7 +128,7 @@ title_window = Window(
         id="title_input",
         on_success=on_title_entered,
     ),
-    Cancel(Const("❌ Отмена"), on_click=on_cancel),
+    Back(Const("❌ Отмена"), on_click=on_cancel),
     state=states.CreateCampaign.select_title,
 )
 
