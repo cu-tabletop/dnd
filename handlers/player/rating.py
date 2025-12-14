@@ -35,6 +35,7 @@ router.include_router(
                     on_click=on_preview,
                 ),
                 hide_on_single_page=True,
+                width=1,
                 height=5,
                 id="top",
             ),
