@@ -68,7 +68,12 @@ async def on_campaign_selected(c: CallbackQuery, b: Button, m: DialogManager, pa
             OtherGamesCampaign.preview, data={"campaign_id": campaign.id, "participation_id": participation.id}
         )
     else:
-        ...
+        await m.start(
+            OtherGamesCharacter.preview,
+            data={
+                "character_id": character.id,
+            },
+        )
 
 
 router.include_router(

@@ -12,6 +12,7 @@ from services.character_data import character_preview_getter
 from states.inventory_view import InventoryView, TargetType
 from states.other_games_campaign import OtherGamesCampaign
 from states.other_games_character import OtherGamesCharacter
+from states.upload_character import UploadCharacter
 
 router = Router()
 
@@ -51,6 +52,17 @@ async def on_inventory(c: CallbackQuery, b: Button, m: DialogManager):
     )
 
 
+async def on_upload_json(c: CallbackQuery, b: Button, m: DialogManager):
+    await m.start(
+        UploadCharacter.upload,
+        data={
+            "target_type": TargetType.CHARACTER,
+            "target_id": None,
+            "campaign_id": m.start_data.get("campaign_id"),
+        },
+    )
+
+
 router.include_router(
     Dialog(
         Window(
@@ -58,6 +70,7 @@ router.include_router(
             Format("{character_data_preview}", when="character_data_preview"),
             Button(Const("Посмотреть инвентарь"), id="inventory", on_click=on_inventory),
             Button(Const("Информация о кампании"), id="campaign_info", on_click=on_campaign_info),
+            Button(Const("Загрузить обновленный .json"), id="update_json", on_click=on_upload_json),
             Cancel(Const("Назад")),
             getter=character_data_getter,
             state=OtherGamesCharacter.preview,
