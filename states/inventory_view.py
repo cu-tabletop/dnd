@@ -10,4 +10,4 @@ class InventoryView(StatesGroup):
 
 class TargetType(enum.IntEnum):
     USER = 0
-    CHARACTER = 0
+    CHARACTER = 1

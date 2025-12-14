@@ -2,18 +2,16 @@ import logging
 from uuid import UUID
 
 from aiogram import Router
-from aiogram.enums import ContentType
 from aiogram.types import CallbackQuery
 from aiogram_dialog import Dialog, DialogManager, Window
-from aiogram_dialog.api.entities import MediaAttachment
 from aiogram_dialog.widgets.kbd import Button, Cancel, ScrollingGroup, Select
 from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Const, Format
 
-from db.models import Campaign, Participation
+from db.models import Participation
+from services.campaigns import campaign_getter
 from states.academy_campaigns import AcademyCampaignPreview, AcademyCampaigns
 from utils.redirect import redirect
-from utils.role import Role
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -32,25 +30,6 @@ async def on_campaign(c: CallbackQuery, b: Button, m: DialogManager, participati
         AcademyCampaignPreview.preview,
         data={"campaign_id": participation.campaign.id, "participation_id": participation.id},
     )
-
-
-async def campaign_getter(dialog_manager: DialogManager, **kwargs):
-    campaign_id = dialog_manager.start_data.get("campaign_id")
-    participation_id = dialog_manager.start_data.get("participation_id")
-
-    campaign = await Campaign.get(id=campaign_id)
-    participation: Participation = await Participation.get(id=participation_id)
-
-    icon = None
-    if object_name := campaign.icon:
-        icon = MediaAttachment(type=ContentType.PHOTO, path=f"minio://campaign-icons:{object_name}")
-
-    return {
-        "title": campaign.title,
-        "description": campaign.description or "Описание отсутствует",
-        "icon": icon,
-        "is_owner": participation.role == Role.OWNER,
-    }
 
 
 router.include_router(

@@ -25,7 +25,10 @@ async def on_inventory(c: CallbackQuery, b: Button, m: DialogManager):
 
 
 async def on_update(c: CallbackQuery, b: Button, m: DialogManager):
-    await m.start(UploadCharacter.upload, data={"source": "user"})
+    await m.start(
+        UploadCharacter.upload,
+        data={"target_type": TargetType.USER, "target_id": m.middleware_data["user"].id},
+    )
 
 
 async def on_rating(c: CallbackQuery, b: Button, m: DialogManager):

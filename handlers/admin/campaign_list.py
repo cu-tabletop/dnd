@@ -60,6 +60,7 @@ campaign_list_window = Window(
             type_factory=UUID,
         ),
         hide_on_single_page=True,
+        width=1,
         height=5,
         id="campaigns",
     ),
