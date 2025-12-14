@@ -10,6 +10,7 @@ from aiogram_dialog.widgets.text import Const, Format
 from db.models import Campaign, Character, Participation, User
 from states.other_games import OtherGames
 from states.other_games_campaign import OtherGamesCampaign
+from states.other_games_character import OtherGamesCharacter
 from utils.character import CharacterData, parse_character_data
 
 router = Router()
@@ -45,7 +46,12 @@ async def available_campaigns_getter(dialog_manager: DialogManager, **kwargs) ->
 
 
 async def on_character_selected(c: CallbackQuery, b: Button, m: DialogManager, character_id: UUID):
-    pass
+    await m.start(
+        OtherGamesCharacter.preview,
+        data={
+            "character_id": character_id,
+        },
+    )
 
 
 async def on_available_games(c: CallbackQuery, b: Button, m: DialogManager):
