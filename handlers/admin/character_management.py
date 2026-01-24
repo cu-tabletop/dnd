@@ -30,7 +30,7 @@ from services.character_data import character_preview_getter
 from services.settings import settings
 from utils.character import CharacterData as CharData
 from utils.character import parse_character_data
-from utils.role import Role
+from utils.enums import Role
 
 from . import states
 

@@ -9,7 +9,7 @@ from aiogram_dialog import DialogManager
 
 from db.models import Invitation
 from services.settings import settings
-from utils.role import Role
+from utils.enums import Role
 
 
 async def generate_link(invitation: Invitation) -> str:

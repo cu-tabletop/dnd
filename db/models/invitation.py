@@ -4,7 +4,7 @@ from tortoise import fields
 from tortoise.fields import OnDelete
 
 from db.models.base import TimestampedModel, UuidModel
-from utils.role import Role
+from utils.enums import Role
 
 
 class Invitation(TimestampedModel, UuidModel):

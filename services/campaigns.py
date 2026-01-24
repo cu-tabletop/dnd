@@ -3,7 +3,7 @@ from aiogram_dialog import DialogManager
 from aiogram_dialog.api.entities import MediaAttachment
 
 from db.models import Campaign, Participation
-from utils.role import Role
+from utils.enums import Role
 
 
 async def campaign_getter(dialog_manager: DialogManager, **kwargs):

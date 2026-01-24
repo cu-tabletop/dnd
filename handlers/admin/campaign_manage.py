@@ -12,7 +12,7 @@ from aiogram_dialog.widgets.text import Const, Format
 
 from db.models.campaign import Campaign
 from db.models.participation import Participation
-from utils.role import Role
+from utils.enums import Role
 
 from . import states
 

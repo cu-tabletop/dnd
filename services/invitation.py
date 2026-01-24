@@ -4,8 +4,8 @@ from aiogram.types import CallbackQuery
 from aiogram_dialog import DialogManager
 
 from db.models import Invitation, Participation, User
+from utils.enums import Role
 from utils.invitation import get_invite_id
-from utils.role import Role
 
 from .settings import settings
 
